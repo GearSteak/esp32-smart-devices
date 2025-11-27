@@ -4,6 +4,8 @@
 #include "esp_event.h"
 #include "esp_log.h"
 
+#include <string.h>
+
 ESP_EVENT_DEFINE_BASE(CSV_EDITOR_EVENT);
 
 static const char *TAG = "csv_editor";
@@ -13,13 +15,20 @@ typedef struct {
     int col;
 } cursor_pos_t;
 
-static csv_editor_open_cfg_t current_sheet = {
-    .path = NULL,
+typedef struct {
+    char path[128];
+    uint16_t viewport_rows;
+    uint16_t viewport_cols;
+} csv_sheet_state_t;
+
+static csv_sheet_state_t current_sheet = {
+    .path = "",
     .viewport_rows = 4,
     .viewport_cols = 8,
 };
 
 static cursor_pos_t cursor;
+static const int JOYSTICK_THRESHOLD = 5;
 
 esp_err_t csv_editor_init(void)
 {
@@ -35,11 +44,14 @@ esp_err_t csv_editor_open(const csv_editor_open_cfg_t *cfg)
         return ESP_ERR_INVALID_ARG;
     }
 
-    current_sheet = *cfg;
+    strncpy(current_sheet.path, cfg->path, sizeof(current_sheet.path) - 1);
+    current_sheet.path[sizeof(current_sheet.path) - 1] = '\0';
+    current_sheet.viewport_rows = cfg->viewport_rows;
+    current_sheet.viewport_cols = cfg->viewport_cols;
     cursor.row = 0;
     cursor.col = 0;
 
-    ESP_LOGI(TAG, "Opening CSV sheet %s (%ux%u viewport)", cfg->path, cfg->viewport_rows, cfg->viewport_cols);
+    ESP_LOGI(TAG, "Opening CSV sheet %s (%ux%u viewport)", current_sheet.path, current_sheet.viewport_rows, current_sheet.viewport_cols);
     // TODO: stream CSV header via doc_manager and cache visible window
     return ESP_OK;
 }
@@ -84,15 +96,15 @@ esp_err_t csv_editor_handle_joystick(int8_t x, int8_t y, uint8_t buttons, uint8_
     (void)layer;
     (void)buttons;
 
-    if (x > 5) {
+    if (x > JOYSTICK_THRESHOLD) {
         csv_editor_move_cursor(0, 1);
-    } else if (x < -5) {
+    } else if (x < -JOYSTICK_THRESHOLD) {
         csv_editor_move_cursor(0, -1);
     }
 
-    if (y > 5) {
+    if (y > JOYSTICK_THRESHOLD) {
         csv_editor_move_cursor(-1, 0);
-    } else if (y < -5) {
+    } else if (y < -JOYSTICK_THRESHOLD) {
         csv_editor_move_cursor(1, 0);
     }
 

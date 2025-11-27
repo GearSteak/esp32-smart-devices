@@ -33,17 +33,23 @@ esp_err_t control_link_send_ack(uint32_t seq)
 
 esp_err_t control_link_subscribe_macros(void (*handler)(const control_link_packet_t *packet))
 {
+    if (!handler) {
+        return ESP_ERR_INVALID_ARG;
+    }
     macro_handler = handler;
     return ESP_OK;
 }
 
 esp_err_t control_link_subscribe_joystick(void (*handler)(const control_link_joystick_t *state))
 {
+    if (!handler) {
+        return ESP_ERR_INVALID_ARG;
+    }
     joystick_handler = handler;
     return ESP_OK;
 }
 
-static void on_macro_received(const uint8_t *data, size_t len)
+static void __attribute__((unused)) on_macro_received(const uint8_t *data, size_t len)
 {
     if (!macro_handler) {
         return;
@@ -60,7 +66,7 @@ static void on_macro_received(const uint8_t *data, size_t len)
 
 static void __attribute__((unused)) on_joystick_frame(const uint8_t *data, size_t len)
 {
-    if (!joystick_handler || len < 6) {
+    if (!joystick_handler || len < 8) {
         return;
     }
 
@@ -69,7 +75,7 @@ static void __attribute__((unused)) on_joystick_frame(const uint8_t *data, size_
         .y = (int8_t)data[1],
         .buttons = data[2],
         .layer = data[3],
-        .seq = (uint16_t)((data[5] << 8) | data[4]),
+        .seq = (uint32_t)data[4] | ((uint32_t)data[5] << 8) | ((uint32_t)data[6] << 16) | ((uint32_t)data[7] << 24),
     };
 
     joystick_handler(&state);

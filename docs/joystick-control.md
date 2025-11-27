@@ -27,14 +27,14 @@ The joystick-equipped partner ESP32 is the **primary** input device: it must dri
   - Long-press + Up switches keyboard layers (latin, kana, symbols); long-press + Down toggles predictive suggestions.
 
 ### BLE Payloads
-- Joystick state published via `Remote Input` service `JoystickEvent` characteristic (notify, 6 B payload):
+- Joystick state published via `Remote Input` service `JoystickEvent` characteristic (notify, 8 B payload):
   ```
   struct {
       int8_t x;   // -100..100
       int8_t y;   // -100..100
       uint8_t buttons; // bit0=press, bit1=double, bit2=long
       uint8_t layer;   // 0=global,1=text,2=csv,3=modifier
-      uint16_t seq;
+      uint32_t seq;
   }
   ```
 - Events sent only on state change >2 units or button transitions to save bandwidth.

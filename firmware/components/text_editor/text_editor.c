@@ -4,12 +4,19 @@
 #include "esp_event.h"
 #include "esp_log.h"
 
+#include <string.h>
+
 ESP_EVENT_DEFINE_BASE(TEXT_EDITOR_EVENT);
 
 static const char *TAG = "text_editor";
 
-static text_editor_open_cfg_t current_doc = {
-    .path = NULL,
+typedef struct {
+    char path[128];
+    text_editor_view_t view;
+} text_editor_state_t;
+
+static text_editor_state_t current_doc = {
+    .path = "",
     .view = TEXT_EDITOR_VIEW_DRAFT,
 };
 
@@ -25,8 +32,11 @@ esp_err_t text_editor_open(const text_editor_open_cfg_t *cfg)
         return ESP_ERR_INVALID_ARG;
     }
 
-    current_doc = *cfg;
-    ESP_LOGI(TAG, "Opening document %s (view %d)", cfg->path, cfg->view);
+    strncpy(current_doc.path, cfg->path, sizeof(current_doc.path) - 1);
+    current_doc.path[sizeof(current_doc.path) - 1] = '\0';
+    current_doc.view = cfg->view;
+
+    ESP_LOGI(TAG, "Opening document %s (view %d)", current_doc.path, current_doc.view);
 
     // TODO: request document stream from doc_manager and populate rope buffer
     return ESP_OK;

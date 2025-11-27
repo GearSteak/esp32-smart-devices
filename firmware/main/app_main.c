@@ -12,12 +12,6 @@
 
 static const char *TAG = "main";
 
-typedef enum {
-    PIPE_EVENT_TRANSLATION,
-    PIPE_EVENT_NOTIFICATION,
-    PIPE_EVENT_PARTNER_CTRL,
-} pipe_event_t;
-
 static bool s_keyboard_connected = false;
 
 static void handle_macro_packet(const control_link_packet_t *packet)
@@ -127,10 +121,18 @@ void app_main(void)
 
     init_services();
 
-    xTaskCreate(display_task, "display_task", 4096, NULL, 5, NULL);
-    xTaskCreate(connectivity_task, "connectivity_task", 4096, NULL, 6, NULL);
-    xTaskCreate(translation_task, "translation_task", 4096, NULL, 5, NULL);
-    xTaskCreate(editor_task, "editor_task", 4096, NULL, 5, NULL);
+    if (xTaskCreate(display_task, "display_task", 4096, NULL, 5, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create display_task");
+    }
+    if (xTaskCreate(connectivity_task, "connectivity_task", 4096, NULL, 6, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create connectivity_task");
+    }
+    if (xTaskCreate(translation_task, "translation_task", 4096, NULL, 5, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create translation_task");
+    }
+    if (xTaskCreate(editor_task, "editor_task", 4096, NULL, 5, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create editor_task");
+    }
 
     ESP_LOGI(TAG, "System init complete");
 }

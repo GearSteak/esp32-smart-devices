@@ -25,7 +25,7 @@ typedef struct {
     int8_t y;
     uint8_t buttons;
     uint8_t layer;
-    uint16_t seq;
+    uint32_t seq;
 } control_link_joystick_t;
 
 esp_err_t control_link_init(void);
