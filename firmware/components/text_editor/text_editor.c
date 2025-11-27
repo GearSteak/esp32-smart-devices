@@ -1,0 +1,70 @@
+#include "text_editor.h"
+
+#include "doc_manager.h"
+#include "esp_event.h"
+#include "esp_log.h"
+
+#include <string.h>
+
+ESP_EVENT_DEFINE_BASE(TEXT_EDITOR_EVENT);
+
+static const char *TAG = "text_editor";
+
+typedef struct {
+    char path[128];
+    text_editor_view_t view;
+} text_editor_state_t;
+
+static text_editor_state_t current_doc = {
+    .path = "",
+    .view = TEXT_EDITOR_VIEW_DRAFT,
+};
+
+esp_err_t text_editor_init(void)
+{
+    ESP_LOGI(TAG, "Initializing text editor subsystem");
+    return ESP_OK;
+}
+
+esp_err_t text_editor_open(const text_editor_open_cfg_t *cfg)
+{
+    if (!cfg || !cfg->path) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    strncpy(current_doc.path, cfg->path, sizeof(current_doc.path) - 1);
+    current_doc.path[sizeof(current_doc.path) - 1] = '\0';
+    current_doc.view = cfg->view;
+
+    ESP_LOGI(TAG, "Opening document %s (view %d)", current_doc.path, current_doc.view);
+
+    // TODO: request document stream from doc_manager and populate rope buffer
+    return ESP_OK;
+}
+
+esp_err_t text_editor_handle_input(const uint8_t *keycode_stream, size_t len)
+{
+    if (!keycode_stream || !len) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    // TODO: translate keycodes into editor actions and update buffer
+    esp_event_post(TEXT_EDITOR_EVENT, TEXT_EDITOR_EVENT_STATUS, NULL, 0, portMAX_DELAY);
+    return ESP_OK;
+}
+
+esp_err_t text_editor_tick(void)
+{
+    // TODO: flush pending renders to UI subsystem
+    esp_event_post(TEXT_EDITOR_EVENT, TEXT_EDITOR_EVENT_RENDER, NULL, 0, 0);
+    return ESP_OK;
+}
+
+esp_err_t text_editor_handle_joystick(int8_t x, int8_t y, uint8_t buttons, uint8_t layer)
+{
+    (void)layer;
+    ESP_LOGD(TAG, "Joystick input x=%d y=%d buttons=0x%02x", x, y, buttons);
+    // TODO: map joystick deltas into cursor movement/scroll within current_doc
+    esp_event_post(TEXT_EDITOR_EVENT, TEXT_EDITOR_EVENT_STATUS, NULL, 0, 0);
+    return ESP_OK;
+}

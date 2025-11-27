@@ -1,0 +1,138 @@
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "nvs_flash.h"
+#include <stdbool.h>
+
+#include "control_link.h"
+#include "csv_editor.h"
+#include "doc_manager.h"
+#include "text_editor.h"
+
+static const char *TAG = "main";
+
+static bool s_keyboard_connected = false;
+
+static void handle_macro_packet(const control_link_packet_t *packet)
+{
+    if (!packet) {
+        return;
+    }
+
+    ESP_LOGI(TAG, "Macro packet len=%d", (int)packet->payload_len);
+    // TODO: parse CBOR and route to text/csv editors
+    control_link_send_ack(packet->seq);
+}
+
+static void handle_on_screen_keyboard(const control_link_joystick_t *state)
+{
+    ESP_LOGD(TAG, "On-screen keyboard joystick input x=%d y=%d buttons=0x%02x", state->x, state->y, state->buttons);
+    // TODO: integrate with UI on-screen keyboard for text entry when BLE keyboard absent.
+}
+
+static void handle_joystick_state(const control_link_joystick_t *state)
+{
+    if (!state) {
+        return;
+    }
+
+    switch (state->layer) {
+    case 1:
+        text_editor_handle_joystick(state->x, state->y, state->buttons, state->layer);
+        break;
+    case 2:
+        csv_editor_handle_joystick(state->x, state->y, state->buttons, state->layer);
+        break;
+    default:
+        text_editor_handle_joystick(state->x, state->y, state->buttons, state->layer);
+        csv_editor_handle_joystick(state->x, state->y, state->buttons, state->layer);
+        break;
+    }
+
+    if (!s_keyboard_connected) {
+        handle_on_screen_keyboard(state);
+    }
+
+    control_link_send_ack(state->seq);
+}
+
+static void display_task(void *arg)
+{
+    ESP_LOGI(TAG, "Display task bootstrap");
+    while (true) {
+        // TODO: pull from UI queue and push frames to transparent OLED
+        vTaskDelay(pdMS_TO_TICKS(250));
+    }
+}
+
+static void connectivity_task(void *arg)
+{
+    ESP_LOGI(TAG, "Connectivity task bootstrap");
+    ESP_ERROR_CHECK(control_link_start_advertising());
+
+    while (true) {
+        // TODO: manage Wi-Fi STA + BLE (phone, keyboard, partner)
+        vTaskDelay(pdMS_TO_TICKS(250));
+    }
+}
+
+static void translation_task(void *arg)
+{
+    ESP_LOGI(TAG, "Translation task bootstrap");
+    while (true) {
+        // TODO: route audio/text to translation providers and cache results
+        vTaskDelay(pdMS_TO_TICKS(250));
+    }
+}
+
+static void editor_task(void *arg)
+{
+    ESP_LOGI(TAG, "Editor task bootstrap");
+    while (true) {
+        text_editor_tick();
+        csv_editor_tick();
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+
+static void init_services(void)
+{
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_LOGI(TAG, "Event loop ready");
+
+    ESP_ERROR_CHECK(doc_manager_init());
+    ESP_ERROR_CHECK(text_editor_init());
+    ESP_ERROR_CHECK(csv_editor_init());
+    ESP_ERROR_CHECK(control_link_init());
+    ESP_ERROR_CHECK(control_link_subscribe_macros(handle_macro_packet));
+    ESP_ERROR_CHECK(control_link_subscribe_joystick(handle_joystick_state));
+
+    // TODO: initialize display, audio, SD card, and BLE subsystems.
+}
+
+void app_main(void)
+{
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ESP_ERROR_CHECK(nvs_flash_init());
+    }
+
+    init_services();
+
+    if (xTaskCreate(display_task, "display_task", 4096, NULL, 5, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create display_task");
+    }
+    if (xTaskCreate(connectivity_task, "connectivity_task", 4096, NULL, 6, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create connectivity_task");
+    }
+    if (xTaskCreate(translation_task, "translation_task", 4096, NULL, 5, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create translation_task");
+    }
+    if (xTaskCreate(editor_task, "editor_task", 4096, NULL, 5, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create editor_task");
+    }
+
+    ESP_LOGI(TAG, "System init complete");
+}
