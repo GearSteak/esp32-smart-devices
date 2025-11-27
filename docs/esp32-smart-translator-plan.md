@@ -13,7 +13,7 @@
 | Display | 128×64 transparent OLED (SPI) | Choose panel with >60% transparency. Need level shifting + dimming FET for readability vs. see-through. |
 | Audio I/O | I²S MEMS mic (top-port) + I²S class‑D amp + bone-conduction transducer or micro speaker | Enables speech capture and spoken prompts. Add analog mic bias disable to save power. |
 | Storage | microSD slot (wired to ESP32 SDMMC) + 4 MB flash partitions + SPIFFS/LittleFS | SD stores offline dictionaries, cached translations, documents. Flash partitioned for dual OTA slots. |
-| Inputs | Capacitive swipe strip, 3 tact buttons, BLE HID keyboards, partner ESP32 controller over BLE | Buttons for quick scene switching, swipe for scrolling, keyboards for editing. |
+| Inputs | Capacitive swipe strip, 3 tact buttons, BLE HID keyboards, partner ESP32 controller over BLE | Joystick-equipped partner ESP32 is the primary input (scrolling, menus, OSK); keyboards are optional add-ons. |
 | Sensors | Onboard camera, ambient light sensor (ALS), IMU optional | ALS auto-adjusts OLED brightness; IMU for gesture-based UI (optional). |
 | Power | 3.7 V LiPo, USB‑C charging (5 V), fuel gauge (MAX17048) | Budget ~350 mA peak with Wi‑Fi + audio + display. Support sleep states <10 mA. |
 
@@ -41,8 +41,8 @@
 5. Cache: frequently used phrases stored on SD for offline fallback.
 
 #### Notification & Document UX
-- **Notification scenes**: prioritize critical apps, offer quick-reply templates (BLE keyboard or partner device input).
-- **Document editor**: minimalist text mode with command palette, autosave snapshots to SD, version tags in metadata JSON. CSV mode offers row/column navigation and quick chart preview (phone renders chart, device displays summary).
+- **Notification scenes**: prioritize critical apps, offer quick-reply templates via joystick or BLE keyboard.
+- **Document editor**: minimalist text mode with command palette, autosave snapshots to SD, version tags in metadata JSON. CSV mode offers row/column navigation and quick chart preview (phone renders chart, device displays summary). On-screen keyboard is fully joystick-controlled when no BLE keyboard is paired.
 
 ### 5. Companion Phone App
 - Cross-platform (Flutter/React Native) to minimize duplication.

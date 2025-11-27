@@ -15,7 +15,11 @@
 - **Input handling**:
   - Keyboard shortcuts for navigation (Emacs/Vim-inspired), macros triggered via partner ESP32 commands.
   - Gesture strip for vertical scroll/page.
-  - Quick palette (Ctrl+Space) for commands (search, replace, jump to heading).
+  - Quick palette (Ctrl+Space) for commands (search, replace, jump to heading); mirrored by joystick long-press shortcuts.
+- **On-screen keyboard**:
+  - Radial or columnar layout to maximize legibility on 128×64 display.
+  - Fully joystick-driven; fallback for when BLE keyboard absent.
+  - Predictive suggestions (top 4) navigated via joystick flick; selection inserts text and updates translation context.
 - **Storage**:
   - Autosave every 60 s or on context switch.
   - Versions stored as diff patches (binary delta) under `.meta/`.
@@ -50,7 +54,7 @@
   - Layer 1 (`TEXT_EDITOR`): joystick axes map to cursor movement/scroll (accelerated).
   - Layer 2 (`CSV_EDITOR`): axes step through cells; button press toggles edit mode.
   - Layer 0/default: events broadcast to both editors for shared commands (e.g., document switch).
-- Button gestures (double, long press) surface as macros that open palettes, switch modes, or trigger exports.
+- Button gestures (double, long press) surface as macros that open palettes, switch modes, trigger exports, and invoke the on-screen keyboard when no BLE keyboard is paired.
 
 ### Dependencies
 - FreeRTOS + message queues for cross-task communication.

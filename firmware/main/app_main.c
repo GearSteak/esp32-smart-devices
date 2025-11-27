@@ -3,6 +3,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include <stdbool.h>
 
 #include "control_link.h"
 #include "csv_editor.h"
@@ -17,6 +18,8 @@ typedef enum {
     PIPE_EVENT_PARTNER_CTRL,
 } pipe_event_t;
 
+static bool s_keyboard_connected = false;
+
 static void handle_macro_packet(const control_link_packet_t *packet)
 {
     if (!packet) {
@@ -26,6 +29,12 @@ static void handle_macro_packet(const control_link_packet_t *packet)
     ESP_LOGI(TAG, "Macro packet len=%d", (int)packet->payload_len);
     // TODO: parse CBOR and route to text/csv editors
     control_link_send_ack(packet->seq);
+}
+
+static void handle_on_screen_keyboard(const control_link_joystick_t *state)
+{
+    ESP_LOGD(TAG, "On-screen keyboard joystick input x=%d y=%d buttons=0x%02x", state->x, state->y, state->buttons);
+    // TODO: integrate with UI on-screen keyboard for text entry when BLE keyboard absent.
 }
 
 static void handle_joystick_state(const control_link_joystick_t *state)
@@ -45,6 +54,10 @@ static void handle_joystick_state(const control_link_joystick_t *state)
         text_editor_handle_joystick(state->x, state->y, state->buttons, state->layer);
         csv_editor_handle_joystick(state->x, state->y, state->buttons, state->layer);
         break;
+    }
+
+    if (!s_keyboard_connected) {
+        handle_on_screen_keyboard(state);
     }
 
     control_link_send_ack(state->seq);

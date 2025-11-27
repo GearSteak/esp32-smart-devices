@@ -1,5 +1,7 @@
 ## Joystick Control Strategy
 
+The joystick-equipped partner ESP32 is the **primary** input device: it must drive every interaction path (scrolling, menus, dialogs, and the on-screen keyboard whenever no BLE keyboard is paired). Bluetooth keyboards are optional enhancements, not requirements.
+
 ### Hardware (Partner ESP32)
 - 2-axis analog joystick (X/Y) connected to ADC inputs, plus integrated push button for select/confirm.
 - Optional secondary buttons (Home, Back) for quick scene switching.
@@ -19,6 +21,10 @@
   - Long press (700 ms): open command palette.
   - Double press: toggle between text and CSV editors.
   - Press + hold left/right: cycle through saved documents/sheets.
+- **On-screen keyboard**:
+  - Activated automatically when BLE keyboard is absent or user requests OSK.
+  - Radial keyboard layout navigated purely by joystick (deflect to select cluster, press to confirm character).
+  - Long-press + Up switches keyboard layers (latin, kana, symbols); long-press + Down toggles predictive suggestions.
 
 ### BLE Payloads
 - Joystick state published via `Remote Input` service `JoystickEvent` characteristic (notify, 6 B payload):

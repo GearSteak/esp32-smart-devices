@@ -7,7 +7,7 @@ Artifacts in this repo track the concept, firmware scaffold, and collaboration d
 - `docs/ble-partner-protocol.md` – BLE GATT schema and lifecycle for the partner ESP32 controller.
 - `docs/development-roadmap.md` – phased schedule and priorities.
 - `docs/editors-spec.md` – functional spec for the text processor and CSV editor modules.
-- `docs/joystick-control.md` – joystick hardware + UX map for the external controller ESP32.
+- `docs/joystick-control.md` – joystick hardware + UX map for the external controller ESP32 (primary input across the whole UI + on-screen keyboard fallback).
 - `firmware/` – ESP-IDF project scaffold for the main device firmware (`idf.py build` ready once ESP-IDF is installed).
 
 ## Getting Started
