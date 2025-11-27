@@ -28,6 +28,28 @@ static void handle_macro_packet(const control_link_packet_t *packet)
     control_link_send_ack(packet->seq);
 }
 
+static void handle_joystick_state(const control_link_joystick_t *state)
+{
+    if (!state) {
+        return;
+    }
+
+    switch (state->layer) {
+    case 1:
+        text_editor_handle_joystick(state->x, state->y, state->buttons, state->layer);
+        break;
+    case 2:
+        csv_editor_handle_joystick(state->x, state->y, state->buttons, state->layer);
+        break;
+    default:
+        text_editor_handle_joystick(state->x, state->y, state->buttons, state->layer);
+        csv_editor_handle_joystick(state->x, state->y, state->buttons, state->layer);
+        break;
+    }
+
+    control_link_send_ack(state->seq);
+}
+
 static void display_task(void *arg)
 {
     ESP_LOGI(TAG, "Display task bootstrap");
@@ -77,6 +99,7 @@ static void init_services(void)
     ESP_ERROR_CHECK(csv_editor_init());
     ESP_ERROR_CHECK(control_link_init());
     ESP_ERROR_CHECK(control_link_subscribe_macros(handle_macro_packet));
+    ESP_ERROR_CHECK(control_link_subscribe_joystick(handle_joystick_state));
 
     // TODO: initialize display, audio, SD card, and BLE subsystems.
 }

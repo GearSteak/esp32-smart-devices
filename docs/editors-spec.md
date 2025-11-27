@@ -43,6 +43,15 @@
   - `CONTROL_EVENT_MACRO` from partner device, routed through Control Link module.
 - **Security**: Optional PIN-locked documents; encryption handled at Storage layer.
 
+### Joystick Integration
+- See `docs/joystick-control.md` for hardware + UX mapping.
+- Control Link publishes `JoystickEvent` packets; editors subscribe via `text_editor_handle_joystick` and `csv_editor_handle_joystick`.
+- Layer logic:
+  - Layer 1 (`TEXT_EDITOR`): joystick axes map to cursor movement/scroll (accelerated).
+  - Layer 2 (`CSV_EDITOR`): axes step through cells; button press toggles edit mode.
+  - Layer 0/default: events broadcast to both editors for shared commands (e.g., document switch).
+- Button gestures (double, long press) surface as macros that open palettes, switch modes, or trigger exports.
+
 ### Dependencies
 - FreeRTOS + message queues for cross-task communication.
 - SDMMC + FatFS for file operations; `esp_littlefs` optional for configs.

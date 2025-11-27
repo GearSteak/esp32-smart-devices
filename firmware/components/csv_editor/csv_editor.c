@@ -78,3 +78,23 @@ esp_err_t csv_editor_tick(void)
     // TODO: flush pending operations / autosave
     return ESP_OK;
 }
+
+esp_err_t csv_editor_handle_joystick(int8_t x, int8_t y, uint8_t buttons, uint8_t layer)
+{
+    (void)layer;
+    (void)buttons;
+
+    if (x > 5) {
+        csv_editor_move_cursor(0, 1);
+    } else if (x < -5) {
+        csv_editor_move_cursor(0, -1);
+    }
+
+    if (y > 5) {
+        csv_editor_move_cursor(-1, 0);
+    } else if (y < -5) {
+        csv_editor_move_cursor(1, 0);
+    }
+
+    return ESP_OK;
+}

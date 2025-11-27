@@ -13,11 +13,11 @@
 ### GATT Services
 | Service | UUID (128-bit) | Characteristics | Purpose |
 | --- | --- | --- | --- |
-| Remote Input | `4f9a0001-8c3f-4a0e-89a7-6d277cf9a000` | `KeypadEvent` (notify, 20 B), `GestureEvent` (notify), `HIDReport` (write w/ resp) | Send button/gesture events or mini-HID packets to main device. |
+| Remote Input | `4f9a0001-8c3f-4a0e-89a7-6d277cf9a000` | `JoystickEvent` (notify, 6 B), `KeypadEvent` (notify, 20 B), `GestureEvent` (notify), `HIDReport` (write w/ resp) | Joystick-driven navigation plus button/gesture events or mini-HID packets. |
 | Sensor Hub | `4f9a0010-8c3f-4a0e-89a7-6d277cf9a000` | `EnvSample` (notify), `IMUSample` (notify) | Stream environmental or IMU data for context-aware UI. |
 | Command & Sync | `4f9a0020-8c3f-4a0e-89a7-6d277cf9a000` | `Command` (write), `Ack` (indicate), `Heartbeat` (notify) | Reliable control messages using CBOR payloads with sequence numbers. |
 
-### Payload Schema (CBOR)
+### Payload Schema (CBOR) & Joystick Frame
 ```json
 {
   "seq": 42,
@@ -28,6 +28,7 @@
   }
 }
 ```
+- `JoystickEvent` payload (binary) is structured as: `int8 x`, `int8 y`, `uint8 buttons`, `uint8 layer`, `uint16 seq`. Axes normalized to -100…100 with ±8% dead zone, buttons bitmask (bit0=press, bit1=double, bit2=long). Layer codes: 0 global, 1 text editor, 2 CSV editor, 3 modifier.
 - Sequence number increments per message; receiver returns ACK containing last seq (Command service `Ack` char).
 - Timestamps use UNIX seconds; optional ms extension.
 - Commands examples: `{"type":"cmd","body":{"action":"wake_main"}}`, `{"action":"start_stream","sensor":"imu","rate_hz":50}`.

@@ -2,6 +2,7 @@
 
 #include "esp_err.h"
 #include "esp_event.h"
+#include <stdint.h>
 
 ESP_EVENT_DECLARE_BASE(TEXT_EDITOR_EVENT);
 
@@ -25,3 +26,4 @@ esp_err_t text_editor_init(void);
 esp_err_t text_editor_open(const text_editor_open_cfg_t *cfg);
 esp_err_t text_editor_handle_input(const uint8_t *keycode_stream, size_t len);
 esp_err_t text_editor_tick(void);
+esp_err_t text_editor_handle_joystick(int8_t x, int8_t y, uint8_t buttons, uint8_t layer);

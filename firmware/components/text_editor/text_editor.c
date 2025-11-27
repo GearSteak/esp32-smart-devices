@@ -49,3 +49,12 @@ esp_err_t text_editor_tick(void)
     esp_event_post(TEXT_EDITOR_EVENT, TEXT_EDITOR_EVENT_RENDER, NULL, 0, 0);
     return ESP_OK;
 }
+
+esp_err_t text_editor_handle_joystick(int8_t x, int8_t y, uint8_t buttons, uint8_t layer)
+{
+    (void)layer;
+    ESP_LOGD(TAG, "Joystick input x=%d y=%d buttons=0x%02x", x, y, buttons);
+    // TODO: map joystick deltas into cursor movement/scroll within current_doc
+    esp_event_post(TEXT_EDITOR_EVENT, TEXT_EDITOR_EVENT_STATUS, NULL, 0, 0);
+    return ESP_OK;
+}
