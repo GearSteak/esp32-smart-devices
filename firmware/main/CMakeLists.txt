@@ -7,9 +7,20 @@ idf_component_register(
     INCLUDE_DIRS "."
     REQUIRES
         esp_event
+        esp_timer
         nvs_flash
-        doc_manager
-        text_editor
-        csv_editor
         control_link
+        mesh_client
+        display
+        ui
+        app_settings
+        app_notes
+        app_calendar
+        app_mesh
+        app_music
+        app_camera
+        app_solitaire
+        app_translate
+        app_email
+        app_browser
 )

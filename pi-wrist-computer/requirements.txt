@@ -1,0 +1,43 @@
+# Pi Wrist Computer - Python Dependencies
+
+# Display
+luma.lcd>=2.10.0
+Pillow>=9.0.0
+
+# Input
+RPi.GPIO>=0.7.1
+smbus2>=0.4.0
+
+# UI & Games
+pygame>=2.1.0
+
+# GPS
+gpsd-py3>=0.3.0
+
+# Network/APIs
+requests>=2.28.0
+bleak>=0.20.0
+
+# Email
+# (uses built-in imaplib/smtplib)
+
+# Web Browser
+html2text>=2020.1.16
+
+# Password Vault
+pykeepass>=4.0.0
+
+# Configuration
+pyyaml>=6.0
+
+# OCR (for later with AR glasses)
+# pytesseract>=0.3.10
+# easyocr>=1.7.0
+
+# Translation (for later)
+# deep-translator>=1.11.0
+
+# Voice (for later with AR glasses)
+# vosk>=0.3.42
+# pyttsx3>=2.90
+

@@ -22,10 +22,14 @@
 - CSV grid view with navigation + quick summary generation (offloaded to phone when needed).
 - SD metadata indexer w/ version tags, sync hooks for companion app/cloud drive.
 
-### Phase 4 – Partner Device & UX Polish (Week 9-11)
+### Phase 4 – Partner Device & Meshtastic Integration (Week 9-11)
 - Finalize BLE partner firmware (remote keypad, sensor hub, wake-word link).
+- Integrate SX1262 LoRa module with partner ESP32 for Meshtastic mesh networking.
+- Implement Mesh Relay BLE service for bidirectional message bridging.
+- Build mesh_client component on main device for message send/receive.
+- Add mesh compose/inbox UI layers with joystick navigation.
 - Power optimization, sleep/wake flows, ALS-based brightness control.
-- Field tests for translation latency, notification reliability, and daylight readability.
+- Field tests for translation latency, notification reliability, mesh range, and daylight readability.
 
 ### Phase 5 – Release Prep (Week 11-12)
 - OTA pipeline hardening, failsafe testing.

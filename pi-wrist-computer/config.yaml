@@ -1,0 +1,83 @@
+# Pi Wrist Computer Configuration
+
+display:
+  type: st7789v
+  width: 240
+  height: 320
+  rotation: 0  # 0, 90, 180, 270
+  # SPI pins (directly wired):
+  #   DIN → GPIO 10 (MOSI)
+  #   CLK → GPIO 11 (SCLK)
+  #   CS  → GPIO 8 (CE0)
+  spi_port: 0
+  spi_device: 0
+  # Control pins:
+  gpio_dc: 25    # DC pin
+  gpio_rst: 27   # RST pin
+  gpio_bl: 24    # BL (backlight) pin
+  brightness: 100  # 0-100
+
+input:
+  cardkb:
+    enabled: true
+    i2c_bus: 1
+    address: 0x5F
+  
+  # Choose ONE: trackball OR buttons (set enabled: false on the other)
+  trackball:
+    enabled: true  # Using trackball by default
+    gpio_up: 5
+    gpio_down: 6
+    gpio_left: 13
+    gpio_right: 19
+    gpio_click: 26
+    sensitivity: 3  # pixels per pulse
+    acceleration: true
+  
+  buttons:
+    enabled: false  # Backup option if trackball is broken
+    gpio_up: 5
+    gpio_down: 6
+    gpio_left: 13
+    gpio_right: 19
+    gpio_select: 26
+    cursor_speed: 5      # pixels per button press
+    repeat_delay: 400    # ms before key repeat starts
+    repeat_rate: 50      # ms between repeats
+
+gps:
+  enabled: true
+  device: /dev/ttyAMA0
+  baudrate: 9600
+
+wifi:
+  # Configured via raspi-config or Settings app
+  country: US
+
+bluetooth:
+  enabled: true
+  # iOS ANCS for notifications
+
+apps:
+  home_assistant:
+    url: ""
+    token: ""
+  
+  weather:
+    api_key: ""  # OpenWeatherMap API key
+    location: ""
+  
+  spotify:
+    # Configured via raspotify
+
+paths:
+  notes: ./data/notes
+  calendar: ./data/calendar
+  passwords: ./data/passwords.kdbx
+
+ui:
+  theme: dark  # dark, light
+  font_size: 14
+  cursor_size: 8
+  status_bar_height: 20
+

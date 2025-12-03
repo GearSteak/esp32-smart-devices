@@ -33,3 +33,4 @@ esp_err_t control_link_start_advertising(void);
 esp_err_t control_link_send_ack(uint32_t seq);
 esp_err_t control_link_subscribe_macros(void (*handler)(const control_link_packet_t *packet));
 esp_err_t control_link_subscribe_joystick(void (*handler)(const control_link_joystick_t *state));
+bool control_link_is_connected(void);

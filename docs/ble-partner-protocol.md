@@ -16,6 +16,7 @@
 | Remote Input | `4f9a0001-8c3f-4a0e-89a7-6d277cf9a000` | `JoystickEvent` (notify, 8 B), `KeypadEvent` (notify, 20 B), `GestureEvent` (notify), `HIDReport` (write w/ resp) | Joystick-driven navigation plus button/gesture events or mini-HID packets. |
 | Sensor Hub | `4f9a0010-8c3f-4a0e-89a7-6d277cf9a000` | `EnvSample` (notify), `IMUSample` (notify) | Stream environmental or IMU data for context-aware UI. |
 | Command & Sync | `4f9a0020-8c3f-4a0e-89a7-6d277cf9a000` | `Command` (write), `Ack` (indicate), `Heartbeat` (notify) | Reliable control messages using CBOR payloads with sequence numbers. |
+| Mesh Relay | `4f9a0030-8c3f-4a0e-89a7-6d277cf9a000` | `MeshInbox` (notify, 256 B), `MeshSend` (write, 256 B), `MeshStatus` (notify/read, 64 B), `NodeList` (read, 512 B) | Bidirectional Meshtastic LoRa mesh message relay. See [partner-device-meshtastic.md](partner-device-meshtastic.md). |
 
 ### Payload Schema (CBOR) & Joystick Frame
 ```json
@@ -28,7 +29,7 @@
   }
 }
 ```
-- `JoystickEvent` payload (binary) is structured as: `int8 x`, `int8 y`, `uint8 buttons`, `uint8 layer`, `uint32 seq`. Axes normalized to -100…100 with ±8% dead zone, buttons bitmask (bit0=press, bit1=double, bit2=long). Layer codes: 0 global, 1 text editor, 2 CSV editor, 3 modifier.
+- `JoystickEvent` payload (binary) is structured as: `int8 x`, `int8 y`, `uint8 buttons`, `uint8 layer`, `uint32 seq`. Axes normalized to -100…100 with ±8% dead zone, buttons bitmask (bit0=press, bit1=double, bit2=long). Layer codes: 0 global, 1 text editor, 2 CSV editor, 3 modifier, 4 mesh compose, 5 mesh inbox.
 - Sequence number increments per message; receiver returns ACK containing last seq (Command service `Ack` char).
 - Timestamps use UNIX seconds; optional ms extension.
 - Commands examples: `{"type":"cmd","body":{"action":"wake_main"}}`, `{"action":"start_stream","sensor":"imu","rate_hz":50}`.
@@ -48,3 +49,63 @@
   - `on_remote_command(cmd)` to trigger UI changes or macros.
   - `on_sensor_request(sensor_id)` to adjust sampling.
 - Main firmware registers service handlers in Connectivity task; events forwarded to translation/UI queues.
+
+### Mesh Relay Service Payloads
+
+The Mesh Relay service enables bidirectional Meshtastic LoRa messaging. All payloads use CBOR encoding.
+
+#### MeshInbox (Partner → Main, Notify)
+Incoming mesh messages from the LoRa network:
+```json
+{
+  "id": 2847561234,
+  "from": "!abcd1234",
+  "from_name": "Bob",
+  "to": "^all",
+  "msg": "Hello from the mesh!",
+  "channel": 0,
+  "rssi": -92,
+  "snr": 6.25,
+  "ts": 1732691234
+}
+```
+
+#### MeshSend (Main → Partner, Write)
+Outgoing messages to transmit via LoRa:
+```json
+{
+  "seq": 101,
+  "to": "^all",
+  "msg": "Reply from translator",
+  "channel": 0,
+  "want_ack": true
+}
+```
+- `to`: Either `"^all"` for broadcast or `"!nodeId"` for direct message.
+- Partner acknowledges via Command service `Ack` with matching `seq`.
+
+#### MeshStatus (Partner → Main, Notify/Read)
+Radio and mesh network status:
+```json
+{
+  "radio_on": true,
+  "connected": true,
+  "my_id": "!1234abcd",
+  "my_name": "Translator",
+  "nodes_heard": 5,
+  "tx_queue": 0,
+  "channel_name": "LongFast",
+  "last_rx_ts": 1732691234
+}
+```
+Published on state change or every 30 s as heartbeat.
+
+#### NodeList (Read)
+Array of recently seen mesh nodes:
+```json
+[
+  {"id": "!abcd1234", "name": "Bob", "last_heard": 1732691200, "rssi": -85, "hops": 1},
+  {"id": "!5678efgh", "name": "Alice", "last_heard": 1732690800, "rssi": -102, "hops": 2}
+]
+```
+Limited to 10 most recently heard nodes.
