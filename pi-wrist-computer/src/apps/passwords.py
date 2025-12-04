@@ -5,8 +5,9 @@ Local KeePass vault viewer with pykeepass.
 
 import os
 from typing import Optional, List, Dict
-from src.ui.display import Display
-from src.input.cardkb import KeyEvent, KeyCode
+from ..ui.framework import App, AppInfo
+from ..ui.display import Display
+from ..input.cardkb import KeyEvent, KeyCode
 
 # Try to import pykeepass
 try:
@@ -27,7 +28,7 @@ class PasswordEntry:
         self.notes = notes
 
 
-class PasswordsApp:
+class PasswordsApp(App):
     """
     Password Manager
     
@@ -36,7 +37,13 @@ class PasswordsApp:
     """
     
     def __init__(self, ui):
-        self.ui = ui
+        super().__init__(ui)
+        self.info = AppInfo(
+            id='passwords',
+            name='Passwords',
+            icon='🔐',
+            color='#9b59b6'
+        )
         self.vault_path = os.path.expanduser("~/vault.kdbx")
         self.kp: Optional[PyKeePass] = None
         self.entries: List[PasswordEntry] = []

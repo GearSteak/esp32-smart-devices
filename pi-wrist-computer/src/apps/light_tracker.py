@@ -6,8 +6,9 @@ Tracks torch/lantern/spell light duration with alarms.
 import time
 import threading
 from typing import Optional
-from src.ui.display import Display
-from src.input.cardkb import KeyEvent, KeyCode
+from ..ui.framework import App, AppInfo
+from ..ui.display import Display
+from ..input.cardkb import KeyEvent, KeyCode
 
 
 class LightSource:
@@ -95,7 +96,7 @@ LIGHT_PRESETS = [
 ]
 
 
-class LightTrackerApp:
+class LightTrackerApp(App):
     """
     Shadowdark Light Tracker
     
@@ -104,7 +105,13 @@ class LightTrackerApp:
     """
     
     def __init__(self, ui):
-        self.ui = ui
+        super().__init__(ui)
+        self.info = AppInfo(
+            id='light_tracker',
+            name='Light Tracker',
+            icon='🔥',
+            color='#ff6600'
+        )
         self.active_lights: list[LightSource] = []
         self.selected_index = 0
         self.mode = 'main'  # main, add_light, editing
@@ -131,10 +138,8 @@ class LightTrackerApp:
         """Called when leaving app."""
         pass
     
-    def handle_input(self, event: KeyEvent) -> bool:
+    def on_key(self, event: KeyEvent) -> bool:
         """Handle input events."""
-        if event.type != 'press':
-            return False
         
         # Dismiss alarm with any key
         if self.showing_alarm:

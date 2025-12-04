@@ -6,8 +6,9 @@ Displays notifications from connected iOS device via ANCS BLE.
 import time
 from typing import Optional, List, Dict
 from datetime import datetime
-from src.ui.display import Display
-from src.input.cardkb import KeyEvent, KeyCode
+from ..ui.framework import App, AppInfo
+from ..ui.display import Display
+from ..input.cardkb import KeyEvent, KeyCode
 
 
 class Notification:
@@ -40,7 +41,7 @@ class Notification:
             return f"{days}d ago"
 
 
-class NotificationsApp:
+class NotificationsApp(App):
     """
     Notifications viewer
     
@@ -65,7 +66,13 @@ class NotificationsApp:
     }
     
     def __init__(self, ui):
-        self.ui = ui
+        super().__init__(ui)
+        self.info = AppInfo(
+            id='notifications',
+            name='Notifications',
+            icon='🔔',
+            color='#e74c3c'
+        )
         self.notifications: List[Notification] = []
         self.selected_index = 0
         self.scroll_offset = 0

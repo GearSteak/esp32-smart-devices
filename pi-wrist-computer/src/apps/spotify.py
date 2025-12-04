@@ -7,8 +7,9 @@ import os
 import json
 import time
 from typing import Optional, Dict, List
-from src.ui.display import Display
-from src.input.cardkb import KeyEvent, KeyCode
+from ..ui.framework import App, AppInfo
+from ..ui.display import Display
+from ..input.cardkb import KeyEvent, KeyCode
 
 # Try to import spotipy
 try:
@@ -19,7 +20,7 @@ except ImportError:
     SPOTIPY_AVAILABLE = False
 
 
-class SpotifyApp:
+class SpotifyApp(App):
     """
     Spotify Controller
     
@@ -45,7 +46,13 @@ class SpotifyApp:
     ]
     
     def __init__(self, ui):
-        self.ui = ui
+        super().__init__(ui)
+        self.info = AppInfo(
+            id='spotify',
+            name='Spotify',
+            icon='🎵',
+            color='#1db954'
+        )
         self.sp: Optional[spotipy.Spotify] = None
         self.credentials_path = os.path.expanduser("~/spotify_credentials.json")
         self.cache_path = os.path.expanduser("~/.spotify_cache")
