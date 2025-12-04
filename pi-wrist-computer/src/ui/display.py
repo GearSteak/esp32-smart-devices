@@ -5,9 +5,11 @@ Direct SPI driver using spidev and PIL - no luma dependency.
 """
 
 import spidev
-import RPi.GPIO as GPIO
 from PIL import Image, ImageDraw, ImageFont
 import time
+
+# Use centralized GPIO manager
+from ..utils.gpio_manager import gpio
 
 # Default font path
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
@@ -51,16 +53,15 @@ class Display:
         self.gpio_rst = config.get('gpio_rst', 27)
         self.gpio_bl = config.get('gpio_bl', 24)
         
-        # Setup GPIO
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
-        GPIO.setup(self.gpio_dc, GPIO.OUT)
-        GPIO.setup(self.gpio_rst, GPIO.OUT)
-        GPIO.setup(self.gpio_bl, GPIO.OUT)
+        # Setup GPIO using centralized manager
+        gpio.setup_output(self.gpio_dc)
+        gpio.setup_output(self.gpio_rst)
+        gpio.setup_output(self.gpio_bl)
         
         # Backlight PWM
-        self._pwm = GPIO.PWM(self.gpio_bl, 1000)
-        self._pwm.start(self.brightness)
+        self._pwm = gpio.setup_pwm(self.gpio_bl, 1000)
+        if self._pwm:
+            self._pwm.start(self.brightness)
         
         # Setup SPI
         self._spi = spidev.SpiDev()
@@ -81,21 +82,21 @@ class Display:
     
     def _reset(self):
         """Hardware reset the display."""
-        GPIO.output(self.gpio_rst, GPIO.HIGH)
+        gpio.output(self.gpio_rst, True)
         time.sleep(0.05)
-        GPIO.output(self.gpio_rst, GPIO.LOW)
+        gpio.output(self.gpio_rst, False)
         time.sleep(0.05)
-        GPIO.output(self.gpio_rst, GPIO.HIGH)
+        gpio.output(self.gpio_rst, True)
         time.sleep(0.15)
     
     def _command(self, cmd):
         """Send command byte."""
-        GPIO.output(self.gpio_dc, GPIO.LOW)
+        gpio.output(self.gpio_dc, False)
         self._spi.writebytes([cmd])
     
     def _data(self, data):
         """Send data bytes."""
-        GPIO.output(self.gpio_dc, GPIO.HIGH)
+        gpio.output(self.gpio_dc, True)
         if isinstance(data, int):
             self._spi.writebytes([data])
         else:
@@ -189,7 +190,8 @@ class Display:
     def set_brightness(self, brightness: int):
         """Set backlight brightness (0-100)."""
         self.brightness = max(0, min(100, brightness))
-        self._pwm.ChangeDutyCycle(self.brightness)
+        if self._pwm:
+            self._pwm.ChangeDutyCycle(self.brightness)
     
     def clear(self, color='black'):
         """Clear the framebuffer."""
@@ -345,6 +347,7 @@ class Display:
     
     def shutdown(self):
         """Clean up resources."""
-        self._pwm.stop()
+        if self._pwm:
+            self._pwm.stop()
         self._spi.close()
-        GPIO.cleanup([self.gpio_dc, self.gpio_rst, self.gpio_bl])
+        gpio.cleanup([self.gpio_dc, self.gpio_rst, self.gpio_bl])

@@ -5,11 +5,13 @@ D-pad style navigation using GPIO buttons.
 Can replace trackball for cursor/menu control.
 """
 
-import RPi.GPIO as GPIO
 import time
 import threading
 from typing import Callable, Tuple
 from dataclasses import dataclass
+
+# Use centralized GPIO manager
+from ..utils.gpio_manager import gpio
 
 
 @dataclass
@@ -78,28 +80,26 @@ class ButtonNav:
     
     def _setup_gpio(self):
         """Setup GPIO pins."""
-        GPIO.setmode(GPIO.BCM)
-        
         pins = [self.gpio_up, self.gpio_down, self.gpio_left, 
                 self.gpio_right, self.gpio_select]
         
         for pin in pins:
-            GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            gpio.setup_input(pin, pull_up=True)
         
         # Edge detection for button presses
-        GPIO.add_event_detect(self.gpio_up, GPIO.BOTH,
+        gpio.add_event_detect(self.gpio_up, 'both',
                               callback=lambda c: self._on_button('up', c),
                               bouncetime=20)
-        GPIO.add_event_detect(self.gpio_down, GPIO.BOTH,
+        gpio.add_event_detect(self.gpio_down, 'both',
                               callback=lambda c: self._on_button('down', c),
                               bouncetime=20)
-        GPIO.add_event_detect(self.gpio_left, GPIO.BOTH,
+        gpio.add_event_detect(self.gpio_left, 'both',
                               callback=lambda c: self._on_button('left', c),
                               bouncetime=20)
-        GPIO.add_event_detect(self.gpio_right, GPIO.BOTH,
+        gpio.add_event_detect(self.gpio_right, 'both',
                               callback=lambda c: self._on_button('right', c),
                               bouncetime=20)
-        GPIO.add_event_detect(self.gpio_select, GPIO.BOTH,
+        gpio.add_event_detect(self.gpio_select, 'both',
                               callback=lambda c: self._on_button('select', c),
                               bouncetime=50)
     
@@ -113,7 +113,8 @@ class ButtonNav:
         """Handle button press/release."""
         # Read actual state (LOW = pressed due to pull-up)
         pin = getattr(self, f'gpio_{button}')
-        pressed = GPIO.input(pin) == GPIO.LOW
+        # gpio.input returns True for HIGH, so pressed = NOT high
+        pressed = not gpio.input(pin)
         
         with self._lock:
             # Update state
@@ -249,9 +250,6 @@ class ButtonNav:
             pins = [self.gpio_up, self.gpio_down, self.gpio_left,
                     self.gpio_right, self.gpio_select]
             for pin in pins:
-                try:
-                    GPIO.remove_event_detect(pin)
-                except Exception:
-                    pass
-            GPIO.cleanup(pins)
+                gpio.remove_event_detect(pin)
+            gpio.cleanup(pins)
 

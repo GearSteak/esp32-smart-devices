@@ -5,11 +5,13 @@ Digital direction trackball with GPIO inputs.
 Outputs pulses on direction pins when rolled.
 """
 
-import RPi.GPIO as GPIO
 import time
 import threading
 from typing import Callable, Tuple
 from dataclasses import dataclass
+
+# Use centralized GPIO manager
+from ..utils.gpio_manager import gpio
 
 
 @dataclass
@@ -64,25 +66,23 @@ class Trackball:
     
     def _setup_gpio(self):
         """Setup GPIO pins with interrupts."""
-        GPIO.setmode(GPIO.BCM)
-        
         # Direction pins - input with pull-up
         for pin in [self.gpio_up, self.gpio_down, self.gpio_left, self.gpio_right]:
-            GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            gpio.setup_input(pin, pull_up=True)
         
         # Click pin
-        GPIO.setup(self.gpio_click, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        gpio.setup_input(self.gpio_click, pull_up=True)
         
         # Add edge detection
-        GPIO.add_event_detect(self.gpio_up, GPIO.FALLING, 
+        gpio.add_event_detect(self.gpio_up, 'falling', 
                               callback=self._on_up, bouncetime=5)
-        GPIO.add_event_detect(self.gpio_down, GPIO.FALLING, 
+        gpio.add_event_detect(self.gpio_down, 'falling', 
                               callback=self._on_down, bouncetime=5)
-        GPIO.add_event_detect(self.gpio_left, GPIO.FALLING, 
+        gpio.add_event_detect(self.gpio_left, 'falling', 
                               callback=self._on_left, bouncetime=5)
-        GPIO.add_event_detect(self.gpio_right, GPIO.FALLING, 
+        gpio.add_event_detect(self.gpio_right, 'falling', 
                               callback=self._on_right, bouncetime=5)
-        GPIO.add_event_detect(self.gpio_click, GPIO.BOTH, 
+        gpio.add_event_detect(self.gpio_click, 'both', 
                               callback=self._on_click, bouncetime=50)
     
     def _calculate_movement(self) -> int:
@@ -142,7 +142,8 @@ class Trackball:
         """Handle click event."""
         with self._lock:
             # Read actual state (FALLING = pressed, RISING = released)
-            pressed = GPIO.input(self.gpio_click) == GPIO.LOW
+            # gpio.input returns True for HIGH, so pressed = NOT high
+            pressed = not gpio.input(self.gpio_click)
             
             if pressed and not self._clicked:
                 self._clicked = True
@@ -209,10 +210,7 @@ class Trackball:
         if self.enabled:
             for pin in [self.gpio_up, self.gpio_down, self.gpio_left, 
                         self.gpio_right, self.gpio_click]:
-                try:
-                    GPIO.remove_event_detect(pin)
-                except Exception:
-                    pass
-            GPIO.cleanup([self.gpio_up, self.gpio_down, self.gpio_left,
+                gpio.remove_event_detect(pin)
+            gpio.cleanup([self.gpio_up, self.gpio_down, self.gpio_left,
                          self.gpio_right, self.gpio_click])
 
