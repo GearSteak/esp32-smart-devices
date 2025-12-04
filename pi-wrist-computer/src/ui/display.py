@@ -1,22 +1,33 @@
 """
 ST7789V 240x320 LCD Display Driver
 
-Uses luma.lcd for hardware abstraction.
-Provides drawing primitives and image display.
+Direct SPI driver using spidev and PIL - no luma dependency.
 """
 
-from luma.lcd.device import st7789
-from luma.core.interface.serial import spi
-from PIL import Image, ImageDraw, ImageFont
+import spidev
 import RPi.GPIO as GPIO
-import os
+from PIL import Image, ImageDraw, ImageFont
+import time
 
 # Default font path
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
+# ST7789 Commands
+ST7789_NOP = 0x00
+ST7789_SWRESET = 0x01
+ST7789_SLPOUT = 0x11
+ST7789_NORON = 0x13
+ST7789_INVON = 0x21
+ST7789_DISPON = 0x29
+ST7789_CASET = 0x2A
+ST7789_RASET = 0x2B
+ST7789_RAMWR = 0x2C
+ST7789_MADCTL = 0x36
+ST7789_COLMOD = 0x3A
+
 
 class Display:
-    """ST7789V LCD Display wrapper with drawing utilities."""
+    """ST7789V LCD Display driver with drawing utilities."""
     
     def __init__(self, config: dict):
         """
@@ -35,29 +46,30 @@ class Display:
         self.rotation = config.get('rotation', 0)
         self.brightness = config.get('brightness', 100)
         
-        # GPIO for backlight
+        # GPIO pins
+        self.gpio_dc = config.get('gpio_dc', 25)
+        self.gpio_rst = config.get('gpio_rst', 27)
         self.gpio_bl = config.get('gpio_bl', 24)
+        
+        # Setup GPIO
         GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+        GPIO.setup(self.gpio_dc, GPIO.OUT)
+        GPIO.setup(self.gpio_rst, GPIO.OUT)
         GPIO.setup(self.gpio_bl, GPIO.OUT)
+        
+        # Backlight PWM
         self._pwm = GPIO.PWM(self.gpio_bl, 1000)
         self._pwm.start(self.brightness)
         
-        # Initialize SPI and device
-        serial = spi(
-            port=config.get('spi_port', 0),
-            device=config.get('spi_device', 0),
-            gpio_DC=config.get('gpio_dc', 25),
-            gpio_RST=config.get('gpio_rst', 27),
-            bus_speed_hz=32000000
-        )
+        # Setup SPI
+        self._spi = spidev.SpiDev()
+        self._spi.open(config.get('spi_port', 0), config.get('spi_device', 0))
+        self._spi.max_speed_hz = 40000000  # 40MHz
+        self._spi.mode = 0
         
-        self.device = st7789(
-            serial,
-            width=self.width,
-            height=self.height,
-            rotate=self.rotation,
-            bgr=True
-        )
+        # Initialize display
+        self._init_display()
         
         # Create framebuffer
         self._buffer = Image.new('RGB', (self.width, self.height), 'black')
@@ -66,6 +78,89 @@ class Display:
         # Load fonts
         self._fonts = {}
         self._load_fonts()
+    
+    def _reset(self):
+        """Hardware reset the display."""
+        GPIO.output(self.gpio_rst, GPIO.HIGH)
+        time.sleep(0.05)
+        GPIO.output(self.gpio_rst, GPIO.LOW)
+        time.sleep(0.05)
+        GPIO.output(self.gpio_rst, GPIO.HIGH)
+        time.sleep(0.15)
+    
+    def _command(self, cmd):
+        """Send command byte."""
+        GPIO.output(self.gpio_dc, GPIO.LOW)
+        self._spi.writebytes([cmd])
+    
+    def _data(self, data):
+        """Send data bytes."""
+        GPIO.output(self.gpio_dc, GPIO.HIGH)
+        if isinstance(data, int):
+            self._spi.writebytes([data])
+        else:
+            # Send in chunks for large data
+            chunk_size = 4096
+            for i in range(0, len(data), chunk_size):
+                self._spi.writebytes(list(data[i:i + chunk_size]))
+    
+    def _init_display(self):
+        """Initialize ST7789 display."""
+        self._reset()
+        
+        # Software reset
+        self._command(ST7789_SWRESET)
+        time.sleep(0.15)
+        
+        # Sleep out
+        self._command(ST7789_SLPOUT)
+        time.sleep(0.5)
+        
+        # Color mode: 16-bit
+        self._command(ST7789_COLMOD)
+        self._data(0x55)
+        time.sleep(0.01)
+        
+        # Memory access control (rotation)
+        self._command(ST7789_MADCTL)
+        if self.rotation == 0:
+            self._data(0x00)
+        elif self.rotation == 90:
+            self._data(0x60)
+            self.width, self.height = self.height, self.width
+        elif self.rotation == 180:
+            self._data(0xC0)
+        elif self.rotation == 270:
+            self._data(0xA0)
+            self.width, self.height = self.height, self.width
+        
+        # Inversion on (for correct colors on most ST7789)
+        self._command(ST7789_INVON)
+        time.sleep(0.01)
+        
+        # Normal display mode
+        self._command(ST7789_NORON)
+        time.sleep(0.01)
+        
+        # Display on
+        self._command(ST7789_DISPON)
+        time.sleep(0.1)
+    
+    def _set_window(self, x0, y0, x1, y1):
+        """Set the drawing window."""
+        self._command(ST7789_CASET)
+        self._data(x0 >> 8)
+        self._data(x0 & 0xFF)
+        self._data(x1 >> 8)
+        self._data(x1 & 0xFF)
+        
+        self._command(ST7789_RASET)
+        self._data(y0 >> 8)
+        self._data(y0 & 0xFF)
+        self._data(y1 >> 8)
+        self._data(y1 & 0xFF)
+        
+        self._command(ST7789_RAMWR)
     
     def _load_fonts(self):
         """Load default fonts."""
@@ -79,7 +174,6 @@ class Display:
     
     def get_font(self, size: int = 14) -> ImageFont:
         """Get font of specified size."""
-        # Find closest available size
         available = sorted(self._fonts.keys())
         closest = min(available, key=lambda x: abs(x - size))
         return self._fonts[closest]
@@ -95,7 +189,20 @@ class Display:
     
     def refresh(self):
         """Push framebuffer to display."""
-        self.device.display(self._buffer)
+        # Convert to RGB565
+        pixels = self._buffer.convert('RGB')
+        data = []
+        
+        for y in range(self.height):
+            for x in range(self.width):
+                r, g, b = pixels.getpixel((x, y))
+                # RGB888 to RGB565
+                rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+                data.append(rgb565 >> 8)
+                data.append(rgb565 & 0xFF)
+        
+        self._set_window(0, 0, self.width - 1, self.height - 1)
+        self._data(bytes(data))
     
     # Drawing primitives
     
@@ -231,6 +338,5 @@ class Display:
     def shutdown(self):
         """Clean up resources."""
         self._pwm.stop()
-        GPIO.cleanup(self.gpio_bl)
-        self.device.cleanup()
-
+        self._spi.close()
+        GPIO.cleanup([self.gpio_dc, self.gpio_rst, self.gpio_bl])
