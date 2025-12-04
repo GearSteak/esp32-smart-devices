@@ -6,7 +6,7 @@ Local KeePass vault viewer with pykeepass.
 import os
 from typing import Optional, List, Dict
 from src.ui.display import Display
-from src.input.keys import KeyEvent, KeyCode
+from src.input.cardkb import KeyEvent, KeyCode
 
 # Try to import pykeepass
 try:

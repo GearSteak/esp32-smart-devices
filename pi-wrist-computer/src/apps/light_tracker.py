@@ -7,7 +7,7 @@ import time
 import threading
 from typing import Optional
 from src.ui.display import Display
-from src.input.keys import KeyEvent, KeyCode
+from src.input.cardkb import KeyEvent, KeyCode
 
 
 class LightSource:

@@ -7,7 +7,7 @@ import time
 from typing import Optional, List, Dict
 from datetime import datetime
 from src.ui.display import Display
-from src.input.keys import KeyEvent, KeyCode
+from src.input.cardkb import KeyEvent, KeyCode
 
 
 class Notification:

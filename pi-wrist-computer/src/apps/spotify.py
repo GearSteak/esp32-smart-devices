@@ -8,7 +8,7 @@ import json
 import time
 from typing import Optional, Dict, List
 from src.ui.display import Display
-from src.input.keys import KeyEvent, KeyCode
+from src.input.cardkb import KeyEvent, KeyCode
 
 # Try to import spotipy
 try:
