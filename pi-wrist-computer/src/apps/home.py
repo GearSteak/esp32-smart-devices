@@ -2,6 +2,7 @@
 Home Screen Application
 
 Displays app grid with icons for launching applications.
+Supports app grouping (folders).
 """
 
 from ..ui.framework import App, AppInfo, Rect, Widget
@@ -17,11 +18,12 @@ class AppIcon(Widget):
     ICON_SIZE = 48
     LABEL_HEIGHT = 16
     
-    def __init__(self, rect: Rect, app_info: AppInfo, on_launch: callable):
+    def __init__(self, rect: Rect, app_info: AppInfo, on_launch: callable, is_folder: bool = False):
         super().__init__(rect)
         self.app_info = app_info
         self.on_launch = on_launch
         self.hovered = False
+        self.is_folder = is_folder
     
     def draw(self, display: Display):
         if not self.visible:
@@ -34,6 +36,9 @@ class AppIcon(Widget):
         if self.focused or self.hovered:
             display.circle(cx, cy, self.ICON_SIZE // 2 + 4, 
                           fill='#0066cc', color='#0088ff')
+        elif self.is_folder:
+            display.circle(cx, cy, self.ICON_SIZE // 2, 
+                          fill='#2a2a4a', color='#4a4a6a')
         else:
             display.circle(cx, cy, self.ICON_SIZE // 2, 
                           fill='#333333', color='#444444')
@@ -64,6 +69,45 @@ class HomeApp(App):
     ICON_WIDTH = 60
     ICON_HEIGHT = 70
     
+    # App categories/folders
+    APP_GROUPS = {
+        'games': {
+            'name': 'Games',
+            'icon': '🎮',
+            'color': '#ff6b6b',
+            'apps': [
+                'tetris', 'snake', '2048', 'solitaire',
+                'minesweeper', 'pong', 'breakout', 'wordle',
+                'flappy', 'connect4', 'simon', 'hangman',
+                'puzzle15', 'memory', 'rps', 'tictactoe',
+                'blackjack', 'invaders', 'asteroids',
+                'checkers', 'chess', 'uno',
+                'pinball', 'gamewatch',
+            ]
+        },
+        'ttrpg': {
+            'name': 'TTRPG',
+            'icon': '⚔',
+            'color': '#c0392b',
+            'apps': ['ttrpg', 'dice', 'light_tracker']
+        },
+        'tools': {
+            'name': 'Tools',
+            'icon': '🔧',
+            'color': '#888888',
+            'apps': ['calculator', 'notes', 'calendar', 'passwords']
+        },
+        'media': {
+            'name': 'Media',
+            'icon': '🎬', 
+            'color': '#ff69b4',
+            'apps': ['media', 'spotify']
+        }
+    }
+    
+    # Apps to show directly on home (not in folders)
+    MAIN_APPS = ['settings', 'weather', 'email', 'browser', 'navigation', 'notifications']
+    
     def __init__(self, ui):
         super().__init__(ui)
         self.info = AppInfo(
@@ -77,9 +121,19 @@ class HomeApp(App):
         self.selected_col = 0
         self.page = 0
         self._app_icons = []
+        
+        # Folder state
+        self.in_folder = False
+        self.current_folder = None
+        self.folder_items = []
+        self.folder_selected = 0
     
     def on_enter(self):
         """Setup home screen."""
+        self.selected_row = 0
+        self.selected_col = 0
+        self.in_folder = False
+        self.current_folder = None
         self._build_grid()
     
     def on_exit(self):
@@ -90,17 +144,40 @@ class HomeApp(App):
         """Build app icon grid."""
         self._app_icons = []
         
-        # Get all registered apps except home
-        apps = [app for app_id, app in self.ui.apps.items() 
-                if app_id != 'home']
-        
         # Calculate grid layout
         start_x = (self.ui.display.width - self.GRID_COLS * self.ICON_WIDTH) // 2
         start_y = self.ui.STATUS_BAR_HEIGHT + 10
         
-        for i, app in enumerate(apps):
+        items = []
+        
+        # Add folders first
+        for folder_id, folder_info in self.APP_GROUPS.items():
+            items.append({
+                'id': f'folder_{folder_id}',
+                'info': AppInfo(
+                    id=f'folder_{folder_id}',
+                    name=folder_info['name'],
+                    icon=folder_info['icon'],
+                    color=folder_info['color']
+                ),
+                'is_folder': True,
+                'folder_id': folder_id
+            })
+        
+        # Add main apps
+        for app_id in self.MAIN_APPS:
+            if app_id in self.ui.apps:
+                app = self.ui.apps[app_id]
+                items.append({
+                    'id': app_id,
+                    'info': app.info,
+                    'is_folder': False
+                })
+        
+        # Create icons
+        for i, item in enumerate(items):
             if i >= self.GRID_COLS * self.GRID_ROWS:
-                break  # Only show one page for now
+                break
             
             row = i // self.GRID_COLS
             col = i % self.GRID_COLS
@@ -110,14 +187,45 @@ class HomeApp(App):
             
             icon = AppIcon(
                 Rect(x, y, self.ICON_WIDTH, self.ICON_HEIGHT),
-                app.info,
-                self._launch_app
+                item['info'],
+                lambda item_id=item['id'], is_folder=item['is_folder'], 
+                       folder_id=item.get('folder_id'): self._handle_select(item_id, is_folder, folder_id),
+                is_folder=item['is_folder']
             )
             self._app_icons.append(icon)
         
         # Set initial selection
         if self._app_icons:
             self._app_icons[0].focused = True
+    
+    def _handle_select(self, item_id: str, is_folder: bool, folder_id: str = None):
+        """Handle item selection."""
+        if is_folder and folder_id:
+            self._open_folder(folder_id)
+        else:
+            self._launch_app(item_id)
+    
+    def _open_folder(self, folder_id: str):
+        """Open a folder."""
+        if folder_id not in self.APP_GROUPS:
+            return
+        
+        folder = self.APP_GROUPS[folder_id]
+        self.current_folder = folder_id
+        self.folder_items = []
+        self.folder_selected = 0
+        
+        for app_id in folder['apps']:
+            if app_id in self.ui.apps:
+                self.folder_items.append(self.ui.apps[app_id])
+        
+        self.in_folder = True
+    
+    def _close_folder(self):
+        """Close current folder."""
+        self.in_folder = False
+        self.current_folder = None
+        self.folder_items = []
     
     def _launch_app(self, app_id: str):
         """Launch an app by ID."""
@@ -134,6 +242,10 @@ class HomeApp(App):
     
     def on_key(self, event: KeyEvent) -> bool:
         """Handle keyboard navigation."""
+        # Handle folder view
+        if self.in_folder:
+            return self._handle_folder_key(event)
+        
         max_row = (len(self._app_icons) - 1) // self.GRID_COLS
         
         if event.code == KeyCode.UP:
@@ -165,11 +277,32 @@ class HomeApp(App):
         elif event.code == KeyCode.ENTER:
             idx = self._get_selected_index()
             if 0 <= idx < len(self._app_icons):
-                self._app_icons[idx].on_launch(
-                    self._app_icons[idx].app_info.id
-                )
+                # Trigger the icon's callback
+                icon = self._app_icons[idx]
+                icon.on_launch(icon.app_info.id)
             return True
         
+        return False
+    
+    def _handle_folder_key(self, event: KeyEvent) -> bool:
+        """Handle keys in folder view."""
+        if event.code == KeyCode.ESC or event.code == KeyCode.BACKSPACE:
+            self._close_folder()
+            return True
+        elif event.code == KeyCode.UP:
+            if self.folder_selected > 0:
+                self.folder_selected -= 1
+            return True
+        elif event.code == KeyCode.DOWN:
+            if self.folder_selected < len(self.folder_items) - 1:
+                self.folder_selected += 1
+            return True
+        elif event.code == KeyCode.ENTER:
+            if self.folder_items:
+                app = self.folder_items[self.folder_selected]
+                self._close_folder()
+                self._launch_app(app.info.id)
+            return True
         return False
     
     def on_click(self, x: int, y: int) -> bool:
@@ -191,10 +324,42 @@ class HomeApp(App):
                     display.width, display.height - self.ui.STATUS_BAR_HEIGHT,
                     fill='#111111')
         
-        # Draw all app icons
-        for icon in self._app_icons:
-            icon.draw(display)
+        if self.in_folder:
+            self._draw_folder(display)
+        else:
+            # Draw all app icons
+            for icon in self._app_icons:
+                icon.draw(display)
+    
+    def _draw_folder(self, display: Display):
+        """Draw folder contents."""
+        if not self.current_folder:
+            return
         
-        # Page indicator (if multiple pages)
-        # TODO: Implement pagination
+        folder = self.APP_GROUPS[self.current_folder]
+        
+        # Folder header
+        display.rect(0, self.ui.STATUS_BAR_HEIGHT, display.width, 35, fill='#1a1a2e')
+        display.text(15, self.ui.STATUS_BAR_HEIGHT + 17, folder['icon'], folder['color'], 18, 'lm')
+        display.text(45, self.ui.STATUS_BAR_HEIGHT + 17, folder['name'], 'white', 16, 'lm')
+        display.text(display.width - 10, self.ui.STATUS_BAR_HEIGHT + 17, '< Back', '#666666', 10, 'rm')
+        
+        # App list
+        item_height = 50
+        start_y = self.ui.STATUS_BAR_HEIGHT + 45
+        
+        for i, app in enumerate(self.folder_items):
+            y = start_y + i * item_height
+            selected = (i == self.folder_selected)
+            
+            if selected:
+                display.rect(10, y, display.width - 20, item_height - 5, fill='#0066cc')
+            else:
+                display.rect(10, y, display.width - 20, item_height - 5, fill='#1a1a2e')
+            
+            # Icon
+            display.text(30, y + item_height // 2 - 2, app.info.icon, app.info.color, 20, 'mm')
+            
+            # Name
+            display.text(60, y + item_height // 2 - 2, app.info.name, 'white', 14, 'lm')
 

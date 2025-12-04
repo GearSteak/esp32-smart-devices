@@ -31,11 +31,16 @@ class SettingsApp(App):
             ('wifi', 'WiFi', '📶'),
             ('bluetooth', 'Bluetooth', '🔵'),
             ('display', 'Display', '☀'),
+            ('lock', 'Lock Screen', '🔒'),
             ('sound', 'Sound', '🔊'),
             ('gps', 'GPS', '📍'),
             ('apps', 'Apps', '📱'),
             ('about', 'About', 'ℹ'),
         ]
+        
+        # Passcode entry state
+        self.entering_passcode = False
+        self.new_passcode = ""
         
         self.selected_index = 0
         self.in_submenu = False
@@ -65,13 +70,36 @@ class SettingsApp(App):
         elif event.code == KeyCode.ENTER:
             self._open_submenu(self.menu_items[self.selected_index][0])
             return True
-        elif event.code == KeyCode.ESC:
+        elif event.code == KeyCode.ESC or event.code == KeyCode.BACKSPACE:
             self.ui.go_home()
             return True
         
         return False
     
     def _handle_submenu_key(self, event: KeyEvent) -> bool:
+        # Handle passcode entry mode
+        if self.entering_passcode:
+            if event.char and event.char.isdigit() and len(self.new_passcode) < 4:
+                self.new_passcode += event.char
+                if len(self.new_passcode) == 4:
+                    # Save passcode
+                    lock_app = self.ui.apps.get('lockscreen')
+                    if lock_app:
+                        lock_app.set_passcode(self.new_passcode)
+                        self.submenu_items[1] = ('lock_passcode', 'Passcode: Set', None)
+                    self.entering_passcode = False
+                    self.new_passcode = ""
+                return True
+            elif event.code == KeyCode.BACKSPACE:
+                if self.new_passcode:
+                    self.new_passcode = self.new_passcode[:-1]
+                return True
+            elif event.code == KeyCode.ESC:
+                self.entering_passcode = False
+                self.new_passcode = ""
+                return True
+            return True
+        
         if event.code == KeyCode.UP:
             if self.submenu_index > 0:
                 self.submenu_index -= 1
@@ -83,7 +111,8 @@ class SettingsApp(App):
         elif event.code == KeyCode.ENTER:
             self._handle_submenu_action()
             return True
-        elif event.code == KeyCode.ESC:
+        elif event.code == KeyCode.ESC or event.code == KeyCode.BACKSPACE:
+            # Go back to settings menu, not main menu
             self.in_submenu = False
             return True
         elif event.code == KeyCode.LEFT or event.code == KeyCode.RIGHT:
@@ -123,6 +152,23 @@ class SettingsApp(App):
                 ('gps_status', 'Status: Checking...', None),
                 ('gps_fix', 'Fix: --', None),
                 ('gps_coords', 'Position: --', None),
+            ]
+        elif menu_id == 'lock':
+            # Get lock screen app
+            lock_app = self.ui.apps.get('lockscreen')
+            if lock_app:
+                timeout = lock_app.timeout_seconds
+                has_passcode = 'Set' if lock_app.passcode else 'None'
+            else:
+                timeout = 30
+                has_passcode = 'None'
+            
+            self.submenu_items = [
+                ('lock_timeout', f'Timeout: {timeout}s', timeout),
+                ('lock_passcode', f'Passcode: {has_passcode}', None),
+                ('lock_set_passcode', 'Set New Passcode...', None),
+                ('lock_clear_passcode', 'Clear Passcode', None),
+                ('lock_now', 'Lock Now', None),
             ]
         elif menu_id == 'about':
             self.submenu_items = [
@@ -179,6 +225,27 @@ class SettingsApp(App):
             self.submenu_items[self.submenu_index] = (
                 'brightness', f'Brightness: {new_val}%', new_val
             )
+        elif item_id == 'lock_timeout' and value is not None:
+            # Timeout options: 10, 30, 60, 120, 300 seconds
+            options = [10, 30, 60, 120, 300]
+            try:
+                idx = options.index(value)
+            except ValueError:
+                idx = 1
+            
+            if increase:
+                idx = min(len(options) - 1, idx + 1)
+            else:
+                idx = max(0, idx - 1)
+            
+            new_val = options[idx]
+            lock_app = self.ui.apps.get('lockscreen')
+            if lock_app:
+                lock_app.set_timeout(new_val)
+            
+            self.submenu_items[self.submenu_index] = (
+                'lock_timeout', f'Timeout: {new_val}s', new_val
+            )
     
     def _handle_submenu_action(self):
         """Handle action on selected submenu item."""
@@ -193,6 +260,18 @@ class SettingsApp(App):
         elif item_id == 'bt_scan':
             # TODO: Scan for Bluetooth devices
             pass
+        elif item_id == 'lock_set_passcode':
+            self.entering_passcode = True
+            self.new_passcode = ""
+        elif item_id == 'lock_clear_passcode':
+            lock_app = self.ui.apps.get('lockscreen')
+            if lock_app:
+                lock_app.set_passcode(None)
+                self.submenu_items[1] = ('lock_passcode', 'Passcode: None', None)
+        elif item_id == 'lock_now':
+            lock_app = self.ui.apps.get('lockscreen')
+            if lock_app:
+                lock_app.lock()
     
     def on_click(self, x: int, y: int) -> bool:
         # Calculate which item was clicked
@@ -263,4 +342,21 @@ class SettingsApp(App):
             if self.in_submenu and item[2] is not None:
                 display.text(display.width - 15, y + item_height // 2,
                             '◀ ▶', '#888888', 12, 'rm')
+        
+        # Passcode entry overlay
+        if self.entering_passcode:
+            display.rect(20, display.height // 2 - 40, 
+                        display.width - 40, 80, fill='#1a1a2e', color='#0066cc')
+            display.text(display.width // 2, display.height // 2 - 20,
+                        'Enter 4-digit passcode', 'white', 14, 'mm')
+            
+            # Show dots
+            dot_spacing = 25
+            start_x = display.width // 2 - int(dot_spacing * 1.5)
+            for i in range(4):
+                x = start_x + i * dot_spacing
+                if i < len(self.new_passcode):
+                    display.circle(x, display.height // 2 + 10, 8, fill='white')
+                else:
+                    display.circle(x, display.height // 2 + 10, 8, color='#666666', width=2)
 

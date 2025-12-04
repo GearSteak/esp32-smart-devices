@@ -35,7 +35,37 @@ from src.apps.games.tetris import TetrisApp
 from src.apps.games.snake import SnakeApp
 from src.apps.games.game_2048 import Game2048App
 from src.apps.games.solitaire import SolitaireApp
+from src.apps.games.minesweeper import MinesweeperApp
+from src.apps.games.pong import PongApp
+from src.apps.games.breakout import BreakoutApp
+from src.apps.games.wordle import WordleApp
+from src.apps.games.flappy import FlappyApp
+from src.apps.games.connect4 import Connect4App
+from src.apps.games.simon import SimonApp
+from src.apps.games.hangman import HangmanApp
+from src.apps.games.puzzle15 import Puzzle15App
+from src.apps.games.memory import MemoryApp
+from src.apps.games.rps import RPSApp
+from src.apps.games.tictactoe import TicTacToeApp
+from src.apps.games.blackjack import BlackjackApp
+from src.apps.games.invaders import InvadersApp
+from src.apps.games.asteroids import AsteroidsApp
+from src.apps.games.checkers import CheckersApp
+from src.apps.games.chess import ChessApp
+from src.apps.games.uno import UnoApp
+from src.apps.games.pinball import PinballApp
+from src.apps.games.gamewatch import GameWatchApp
 from src.apps.navigation import NavigationApp
+from src.apps.lockscreen import LockScreen
+from src.apps.email_client import EmailApp
+from src.apps.browser import BrowserApp
+from src.apps.media import MediaApp
+from src.apps.dice import DiceApp
+from src.apps.ttrpg import TTRPGApp
+from src.apps.light_tracker import LightTrackerApp
+from src.apps.passwords import PasswordsApp
+from src.apps.spotify import SpotifyApp
+from src.apps.notifications import NotificationsApp
 
 
 class PiWristComputer:
@@ -108,19 +138,57 @@ class PiWristComputer:
         self.ui.register_app(SnakeApp(self.ui))
         self.ui.register_app(Game2048App(self.ui))
         self.ui.register_app(SolitaireApp(self.ui))
+        self.ui.register_app(MinesweeperApp(self.ui))
+        self.ui.register_app(PongApp(self.ui))
+        self.ui.register_app(BreakoutApp(self.ui))
+        self.ui.register_app(WordleApp(self.ui))
+        self.ui.register_app(FlappyApp(self.ui))
+        self.ui.register_app(Connect4App(self.ui))
+        self.ui.register_app(SimonApp(self.ui))
+        self.ui.register_app(HangmanApp(self.ui))
+        self.ui.register_app(Puzzle15App(self.ui))
+        self.ui.register_app(MemoryApp(self.ui))
+        self.ui.register_app(RPSApp(self.ui))
+        self.ui.register_app(TicTacToeApp(self.ui))
+        self.ui.register_app(BlackjackApp(self.ui))
+        self.ui.register_app(InvadersApp(self.ui))
+        self.ui.register_app(AsteroidsApp(self.ui))
+        self.ui.register_app(CheckersApp(self.ui))
+        self.ui.register_app(ChessApp(self.ui))
+        self.ui.register_app(UnoApp(self.ui))
+        self.ui.register_app(PinballApp(self.ui))
+        self.ui.register_app(GameWatchApp(self.ui))
         
         # Navigation (with GPS service)
         nav_app = NavigationApp(self.ui, self.gps)
         self.ui.register_app(nav_app)
         
-        # TODO: Add more apps
-        # - Email
-        # - Browser
-        # - Spotify
-        # - Home Assistant
-        # - Password vault
-        # - Navigation
-        # - ANCS notifications
+        # Lock screen
+        self.lock_screen = LockScreen(self.ui)
+        self.ui.register_app(self.lock_screen)
+        
+        # Email client
+        self.ui.register_app(EmailApp(self.ui))
+        
+        # Web browser
+        self.ui.register_app(BrowserApp(self.ui))
+        
+        # Media browser
+        self.ui.register_app(MediaApp(self.ui))
+        
+        # TTRPG apps
+        self.ui.register_app(DiceApp(self.ui))
+        self.ui.register_app(TTRPGApp(self.ui))
+        self.ui.register_app(LightTrackerApp(self.ui))
+        
+        # Password vault
+        self.ui.register_app(PasswordsApp(self.ui))
+        
+        # Spotify
+        self.ui.register_app(SpotifyApp(self.ui))
+        
+        # Notifications (iOS ANCS)
+        self.ui.register_app(NotificationsApp(self.ui))
     
     def _signal_handler(self, sig, frame):
         """Handle shutdown signals."""
@@ -137,6 +205,13 @@ class PiWristComputer:
         self.ui.set_status(battery=self.battery.percent)
         
         # WiFi/BT status would be updated by respective services
+        
+        # Check screen timeout (only on home screen)
+        if (self.ui.current_app and 
+            self.ui.current_app.info.id == 'home' and
+            self.lock_screen.check_timeout()):
+            self.lock_screen.lock()
+            self.lock_screen.sleep_screen()
     
     def run(self):
         """Main run loop."""

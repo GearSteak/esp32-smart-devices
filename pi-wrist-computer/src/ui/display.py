@@ -122,17 +122,25 @@ class Display:
         time.sleep(0.01)
         
         # Memory access control (rotation)
+        # Store original dimensions
+        orig_width = self.width
+        orig_height = self.height
+        
         self._command(ST7789_MADCTL)
         if self.rotation == 0:
             self._data(0x00)
         elif self.rotation == 90:
             self._data(0x60)
-            self.width, self.height = self.height, self.width
+            self.width, self.height = orig_height, orig_width
         elif self.rotation == 180:
             self._data(0xC0)
         elif self.rotation == 270:
             self._data(0xA0)
-            self.width, self.height = self.height, self.width
+            self.width, self.height = orig_height, orig_width
+        
+        # Recreate buffer with correct dimensions
+        self._buffer = Image.new('RGB', (self.width, self.height), 'black')
+        self._draw = ImageDraw.Draw(self._buffer)
         
         # Inversion on (for correct colors on most ST7789)
         self._command(ST7789_INVON)

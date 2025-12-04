@@ -78,8 +78,8 @@ class CardKB:
         self._callbacks = []
         self._last_key = 0
         self._last_time = 0
-        self._repeat_delay = 0.5  # Initial delay before repeat
-        self._repeat_rate = 0.05  # Time between repeats
+        self._repeat_delay = 0.3  # Initial delay before repeat (faster)
+        self._repeat_rate = 0.08  # Time between repeats (faster)
         
         if self.enabled:
             self._init_bus()
@@ -117,12 +117,11 @@ class CardKB:
         
         now = time.time()
         
-        # Handle key repeat
+        # Handle key repeat - only block if same key pressed too quickly
         if key == self._last_key:
             elapsed = now - self._last_time
+            # Allow repeat after delay
             if elapsed < self._repeat_delay:
-                return None
-            if elapsed < self._repeat_delay + self._repeat_rate:
                 return None
         
         self._last_key = key
