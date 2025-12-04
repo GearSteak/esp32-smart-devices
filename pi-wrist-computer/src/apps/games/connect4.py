@@ -34,6 +34,9 @@ class Connect4App(App):
     def on_enter(self):
         self._new_game()
     
+    def on_exit(self):
+        pass
+    
     def _new_game(self):
         """Start a new game."""
         self.board = [[0] * self.COLS for _ in range(self.ROWS)]

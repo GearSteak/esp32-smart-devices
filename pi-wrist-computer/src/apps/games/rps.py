@@ -37,6 +37,9 @@ class RPSApp(App):
     
     def on_enter(self):
         self._reset_round()
+    
+    def on_exit(self):
+        pass
         self.player_score = 0
         self.cpu_score = 0
     

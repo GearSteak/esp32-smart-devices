@@ -52,6 +52,9 @@ class GameWatchApp(App):
         self.state = 'menu'
         self.current_game = 0
     
+    def on_exit(self):
+        pass
+    
     def _start_game(self):
         """Start selected game."""
         self.score = 0

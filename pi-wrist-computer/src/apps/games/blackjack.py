@@ -35,6 +35,9 @@ class BlackjackApp(App):
     def on_enter(self):
         self._new_round()
     
+    def on_exit(self):
+        pass
+    
     def _new_round(self):
         """Start a new round."""
         self.deck = [(r, s) for r in self.RANKS for s in self.SUITS]

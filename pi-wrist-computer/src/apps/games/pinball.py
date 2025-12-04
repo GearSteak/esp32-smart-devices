@@ -44,6 +44,9 @@ class PinballApp(App):
     def on_enter(self):
         self._new_game()
     
+    def on_exit(self):
+        pass
+    
     def _new_game(self):
         """Start new game."""
         self.score = 0

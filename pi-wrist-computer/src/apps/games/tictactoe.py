@@ -32,6 +32,9 @@ class TicTacToeApp(App):
     def on_enter(self):
         self._new_game()
     
+    def on_exit(self):
+        pass
+    
     def _new_game(self):
         """Start a new game."""
         self.board = [['' for _ in range(3)] for _ in range(3)]

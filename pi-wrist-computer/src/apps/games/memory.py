@@ -39,6 +39,9 @@ class MemoryApp(App):
     def on_enter(self):
         self._new_game()
     
+    def on_exit(self):
+        pass
+    
     def _new_game(self):
         """Start a new game."""
         pairs = self.SYMBOLS[:(self.cols * self.rows) // 2]

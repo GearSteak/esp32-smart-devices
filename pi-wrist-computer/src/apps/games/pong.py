@@ -43,6 +43,9 @@ class PongApp(App):
     def on_enter(self):
         self._reset_game()
     
+    def on_exit(self):
+        pass
+    
     def _reset_game(self):
         """Reset the game state."""
         self.player_y = (self.ui.display.height - self.paddle_height) // 2
