@@ -50,6 +50,15 @@ gps:
   device: /dev/ttyAMA0
   baudrate: 9600
 
+battery:
+  # Mode options: 'none', 'ups_lite', 'pisugar', 'auto'
+  # 'none' - No battery monitoring (10000mAh + step-up converter)
+  # 'ups_lite' - UPS-Lite with MAX17040 (I2C 0x36)
+  # 'pisugar' - PiSugar battery (I2C 0x57)
+  # 'auto' - Auto-detect connected module
+  mode: none
+  show_indicator: false  # Hide battery icon when no monitoring
+
 wifi:
   # Configured via raspi-config or Settings app
   country: US

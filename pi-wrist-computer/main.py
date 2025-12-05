@@ -100,7 +100,7 @@ class PiWristComputer:
         self.gps = GPSService(self.config.get('gps', {}))
         
         print("Initializing battery monitor...")
-        self.battery = BatteryService()
+        self.battery = BatteryService(self.config.get('battery', {}))
         
         # Register apps
         self._register_apps()

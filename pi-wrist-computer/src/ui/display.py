@@ -47,11 +47,15 @@ class Display:
         self.height = config.get('height', 320)
         self.rotation = config.get('rotation', 0)
         self.brightness = config.get('brightness', 100)
+        self.invert_colors = config.get('invert_colors', True)  # Some displays need False
         
         # GPIO pins
         self.gpio_dc = config.get('gpio_dc', 25)
         self.gpio_rst = config.get('gpio_rst', 27)
         self.gpio_bl = config.get('gpio_bl', 24)
+        
+        # Track if already initialized
+        self._initialized = False
         
         # Setup GPIO using centralized manager
         gpio.setup_output(self.gpio_dc)
@@ -107,6 +111,9 @@ class Display:
     
     def _init_display(self):
         """Initialize ST7789 display."""
+        if self._initialized:
+            return  # Don't re-initialize
+        
         self._reset()
         
         # Software reset
@@ -143,8 +150,11 @@ class Display:
         self._buffer = Image.new('RGB', (self.width, self.height), 'black')
         self._draw = ImageDraw.Draw(self._buffer)
         
-        # Inversion on (for correct colors on most ST7789)
-        self._command(ST7789_INVON)
+        # Color inversion - some displays need INVON, others need INVOFF
+        if self.invert_colors:
+            self._command(ST7789_INVON)
+        else:
+            self._command(0x20)  # INVOFF
         time.sleep(0.01)
         
         # Normal display mode
@@ -154,6 +164,8 @@ class Display:
         # Display on
         self._command(ST7789_DISPON)
         time.sleep(0.1)
+        
+        self._initialized = True
     
     def _set_window(self, x0, y0, x1, y1):
         """Set the drawing window."""
