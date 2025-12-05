@@ -310,6 +310,7 @@ class HomeApp(App):
                 # Scroll down if needed
                 if self.folder_selected >= self.folder_scroll + max_visible:
                     self.folder_scroll = self.folder_selected - max_visible + 1
+            # Don't go back to main menu - stay at bottom if already there
             return True
         elif event.code == KeyCode.ENTER:
             if self.folder_items:

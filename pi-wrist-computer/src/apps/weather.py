@@ -67,22 +67,36 @@ class WeatherApp(App):
             if response.status_code == 200:
                 self.weather_data = response.json()
                 self.last_update = datetime.now()
+                self.error = None
+            elif response.status_code == 401:
+                self.error = "Invalid API key"
+            elif response.status_code == 404:
+                self.error = "Location not found"
             else:
-                self.error = f"API error: {response.status_code}"
+                try:
+                    error_data = response.json()
+                    self.error = error_data.get('message', f"API error: {response.status_code}")
+                except:
+                    self.error = f"API error: {response.status_code}"
             
-            # Forecast
-            url = (f"https://api.openweathermap.org/data/2.5/forecast"
-                   f"?q={self.location}&appid={self.api_key}&units=metric&cnt=8")
-            response = requests.get(url, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                self.forecast = data.get('list', [])[:5]
+            # Only fetch forecast if current weather succeeded
+            if self.weather_data:
+                url = (f"https://api.openweathermap.org/data/2.5/forecast"
+                       f"?q={self.location}&appid={self.api_key}&units=metric&cnt=8")
+                response = requests.get(url, timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    self.forecast = data.get('list', [])[:5]
         
+        except requests.exceptions.Timeout:
+            self.error = "Request timeout"
+        except requests.exceptions.ConnectionError:
+            self.error = "No internet connection"
         except requests.exceptions.RequestException as e:
-            self.error = f"Network error"
+            self.error = f"Network error: {str(e)[:30]}"
         except Exception as e:
-            self.error = str(e)
+            self.error = f"Error: {str(e)[:40]}"
         finally:
             self.loading = False
     

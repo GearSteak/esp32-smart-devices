@@ -46,6 +46,8 @@ class SettingsApp(App):
         self.in_submenu = False
         self.submenu_items = []
         self.submenu_index = 0
+        self.scroll_offset = 0  # For main menu
+        self.submenu_scroll = 0  # For submenu
     
     def on_enter(self):
         """Setup settings menu."""
@@ -59,13 +61,24 @@ class SettingsApp(App):
         if self.in_submenu:
             return self._handle_submenu_key(event)
         
+        # Calculate visible items
+        item_height = 35
+        available_height = self.ui.display.height - self.ui.STATUS_BAR_HEIGHT - 30
+        max_visible = available_height // item_height
+        
         if event.code == KeyCode.UP:
             if self.selected_index > 0:
                 self.selected_index -= 1
+                # Scroll up if needed
+                if self.selected_index < self.scroll_offset:
+                    self.scroll_offset = self.selected_index
             return True
         elif event.code == KeyCode.DOWN:
             if self.selected_index < len(self.menu_items) - 1:
                 self.selected_index += 1
+                # Scroll down if needed
+                if self.selected_index >= self.scroll_offset + max_visible:
+                    self.scroll_offset = self.selected_index - max_visible + 1
             return True
         elif event.code == KeyCode.ENTER:
             self._open_submenu(self.menu_items[self.selected_index][0])
@@ -100,13 +113,24 @@ class SettingsApp(App):
                 return True
             return True
         
+        # Calculate visible items for submenu
+        item_height = 35
+        available_height = self.ui.display.height - self.ui.STATUS_BAR_HEIGHT - 30
+        max_visible = available_height // item_height
+        
         if event.code == KeyCode.UP:
             if self.submenu_index > 0:
                 self.submenu_index -= 1
+                # Scroll up if needed
+                if self.submenu_index < self.submenu_scroll:
+                    self.submenu_scroll = self.submenu_index
             return True
         elif event.code == KeyCode.DOWN:
             if self.submenu_index < len(self.submenu_items) - 1:
                 self.submenu_index += 1
+                # Scroll down if needed
+                if self.submenu_index >= self.submenu_scroll + max_visible:
+                    self.submenu_scroll = self.submenu_index - max_visible + 1
             return True
         elif event.code == KeyCode.ENTER:
             self._handle_submenu_action()
@@ -126,6 +150,7 @@ class SettingsApp(App):
         """Open a submenu."""
         self.in_submenu = True
         self.submenu_index = 0
+        self.submenu_scroll = 0  # Reset scroll when opening submenu
         
         if menu_id == 'display':
             brightness = self.ui.display.brightness
@@ -351,13 +376,22 @@ class SettingsApp(App):
         # Menu items
         items = self.submenu_items if self.in_submenu else self.menu_items
         selected = self.submenu_index if self.in_submenu else self.selected_index
+        scroll = self.submenu_scroll if self.in_submenu else self.scroll_offset
         
         item_height = 35
         start_y = self.ui.STATUS_BAR_HEIGHT + 30
+        available_height = display.height - self.ui.STATUS_BAR_HEIGHT - 30
+        max_visible = available_height // item_height
         
-        for i, item in enumerate(items):
+        # Draw only visible items
+        for i in range(max_visible):
+            item_idx = scroll + i
+            if item_idx >= len(items):
+                break
+            
+            item = items[item_idx]
             y = start_y + i * item_height
-            is_selected = (i == selected)
+            is_selected = (item_idx == selected)
             
             if is_selected:
                 display.rect(5, y, display.width - 10, item_height - 2,
@@ -377,6 +411,13 @@ class SettingsApp(App):
             if self.in_submenu and item[2] is not None:
                 display.text(display.width - 15, y + item_height // 2,
                             '◀ ▶', '#888888', 12, 'rm')
+        
+        # Scroll indicators
+        if scroll > 0:
+            display.text(display.width // 2, start_y - 8, '▲', '#888888', 12, 'mm')
+        
+        if scroll + max_visible < len(items):
+            display.text(display.width // 2, display.height - 8, '▼', '#888888', 12, 'mm')
         
         # Passcode entry overlay
         if self.entering_passcode:

@@ -454,6 +454,11 @@ class UI:
         if self.current_app:
             self.current_app.on_exit()
         
+        # Reset lock screen activity timer when navigating
+        lock_app = self.apps.get('lockscreen')
+        if lock_app:
+            lock_app.reset_activity()
+        
         # Enter new app
         self.current_app = self.apps[app_id]
         self.current_app.on_enter()

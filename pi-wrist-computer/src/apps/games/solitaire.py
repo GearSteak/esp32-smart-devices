@@ -393,13 +393,20 @@ class SolitaireApp(App):
     def _draw_card(self, display: Display, card: Card, x: int, y: int, 
                    selected: bool = False):
         """Draw a face-up card."""
+        # Ensure card is valid
+        if not card or not hasattr(card, 'rank') or not hasattr(card, 'suit'):
+            return
+        
         bg = '#ffff88' if selected else '#ffffff'
         display.rect(x, y, self.CARD_WIDTH, self.CARD_HEIGHT, fill=bg, color='#000000')
         
-        color = SUIT_COLORS[card.suit]
-        # Rank and suit
-        text = f"{card.rank}{card.suit}"
-        display.text(x + 2, y + 2, text, color, 9)
+        color = SUIT_COLORS.get(card.suit, '#000000')
+        # Rank and suit - ensure text fits
+        rank = str(card.rank) if card.rank else '?'
+        suit = card.suit if card.suit else '?'
+        text = f"{rank}{suit}"
+        # Use larger font and ensure it's visible
+        display.text(x + 3, y + 4, text, color, 10)
     
     def _draw_card_back(self, display: Display, x: int, y: int):
         """Draw a face-down card."""
