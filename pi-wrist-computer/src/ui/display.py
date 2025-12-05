@@ -289,7 +289,8 @@ class Display:
         ]
         self._draw.polygon(points, fill=color, outline='black')
     
-    def draw_status_bar(self, time_str: str, wifi: bool, bt: bool, battery: int = None):
+    def draw_status_bar(self, time_str: str, wifi: bool, bt: bool, 
+                        battery: int = None, notif_count: int = 0):
         """Draw status bar at top of screen."""
         bar_height = 20
         self.rect(0, 0, self.width, bar_height, fill='#222222')
@@ -304,6 +305,15 @@ class Display:
         # Bluetooth indicator
         bt_color = '#0088ff' if bt else '#666666'
         self.text(20, 2, 'B', color=bt_color, size=12)
+        
+        # Notification indicator (after BT)
+        if notif_count > 0:
+            # Bell icon with count
+            self.text(35, 2, '🔔', color='#ffcc00', size=10)
+            if notif_count <= 9:
+                self.text(48, 2, str(notif_count), color='#ffcc00', size=10)
+            else:
+                self.text(48, 2, '9+', color='#ffcc00', size=9)
         
         # Battery (right) - only show if battery is not None
         if battery is not None:

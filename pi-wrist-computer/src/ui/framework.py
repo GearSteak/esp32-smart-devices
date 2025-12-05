@@ -342,6 +342,7 @@ class Notification:
     color: str = '#0088ff'
     timestamp: float = 0
     duration: float = 5.0  # seconds
+    read: bool = False  # Track if notification has been viewed
 
 
 class UI:
@@ -515,11 +516,15 @@ class UI:
         self.display.clear()
         
         # Draw status bar
+        # Count unread notifications
+        notif_count = len([n for n in self.notifications if not n.read])
+        
         self.display.draw_status_bar(
             self.time_str,
             self.wifi_connected,
             self.bt_connected,
-            self.battery_percent if self.show_battery else None
+            self.battery_percent if self.show_battery else None,
+            notif_count
         )
         
         # Draw current app
