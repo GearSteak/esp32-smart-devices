@@ -88,11 +88,16 @@ class PiWristComputer:
         
         # Initialize UI
         print("Initializing UI framework...")
+        ui_config = self.config.get('ui', {})
+        # Pass battery visibility from battery config
+        battery_config = self.config.get('battery', {})
+        ui_config['show_battery'] = battery_config.get('show_indicator', True)
+        
         self.ui = UI(
             self.display, 
             self.cardkb, 
             self.trackball,
-            self.config.get('ui', {})
+            ui_config
         )
         
         # Initialize services

@@ -289,7 +289,7 @@ class Display:
         ]
         self._draw.polygon(points, fill=color, outline='black')
     
-    def draw_status_bar(self, time_str: str, wifi: bool, bt: bool, battery: int):
+    def draw_status_bar(self, time_str: str, wifi: bool, bt: bool, battery: int = None):
         """Draw status bar at top of screen."""
         bar_height = 20
         self.rect(0, 0, self.width, bar_height, fill='#222222')
@@ -305,14 +305,15 @@ class Display:
         bt_color = '#0088ff' if bt else '#666666'
         self.text(20, 2, 'B', color=bt_color, size=12)
         
-        # Battery (right)
-        batt_x = self.width - 35
-        batt_color = '#00ff00' if battery > 20 else '#ff0000'
-        self.rect(batt_x, 4, 25, 12, color='white')
-        self.rect(batt_x + 25, 7, 3, 6, fill='white')
-        fill_width = int(23 * battery / 100)
-        if fill_width > 0:
-            self.rect(batt_x + 1, 5, fill_width, 10, fill=batt_color)
+        # Battery (right) - only show if battery is not None
+        if battery is not None:
+            batt_x = self.width - 35
+            batt_color = '#00ff00' if battery > 20 else '#ff0000'
+            self.rect(batt_x, 4, 25, 12, color='white')
+            self.rect(batt_x + 25, 7, 3, 6, fill='white')
+            fill_width = int(23 * battery / 100)
+            if fill_width > 0:
+                self.rect(batt_x + 1, 5, fill_width, 10, fill=batt_color)
     
     def draw_button(self, x: int, y: int, w: int, h: int, text: str, 
                     selected: bool = False, enabled: bool = True):

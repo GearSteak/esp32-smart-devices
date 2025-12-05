@@ -378,6 +378,7 @@ class UI:
         self.wifi_connected = False
         self.bt_connected = False
         self.battery_percent = 100
+        self.show_battery = config.get('show_battery', True)  # Can hide if no UPS
         
         # Notifications
         self.notifications: List[Notification] = []
@@ -518,7 +519,7 @@ class UI:
             self.time_str,
             self.wifi_connected,
             self.bt_connected,
-            self.battery_percent
+            self.battery_percent if self.show_battery else None
         )
         
         # Draw current app
