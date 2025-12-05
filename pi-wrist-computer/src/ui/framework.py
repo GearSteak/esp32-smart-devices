@@ -400,10 +400,11 @@ class UI:
     
     def _on_key(self, event: KeyEvent):
         """Handle keyboard input."""
-        # Reset lock screen activity timer
-        lock_app = self.apps.get('lockscreen')
-        if lock_app:
-            lock_app.reset_activity()
+        # Reset lock screen activity timer (only if lock screen is active)
+        if self.current_app and self.current_app.info.id == 'lockscreen':
+            lock_app = self.apps.get('lockscreen')
+            if lock_app:
+                lock_app.reset_activity()
         
         # ESC returns to home (unless on lock screen)
         if event.code == KeyCode.ESC:
@@ -430,10 +431,11 @@ class UI:
     
     def _on_click(self, pressed: bool):
         """Handle trackball click."""
-        # Reset lock screen activity timer
-        lock_app = self.apps.get('lockscreen')
-        if lock_app:
-            lock_app.reset_activity()
+        # Reset lock screen activity timer (only if lock screen is active)
+        if self.current_app and self.current_app.info.id == 'lockscreen':
+            lock_app = self.apps.get('lockscreen')
+            if lock_app:
+                lock_app.reset_activity()
         
         if pressed and self.current_app:
             self.current_app.on_click(self.cursor_x, self.cursor_y)

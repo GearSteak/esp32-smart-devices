@@ -164,6 +164,10 @@ class LockScreen(App):
     
     def reset_activity(self):
         """Reset activity timer (call on any user input)."""
+        # Only reset if we're actually locked
+        if not self.is_locked:
+            return
+        
         self.last_activity = time.time()
         
         # Turn screen back on if off
@@ -198,9 +202,14 @@ class LockScreen(App):
     
     def sleep_screen(self):
         """Turn off screen to save power."""
+        # Only sleep if we're actually locked
+        if not self.is_locked:
+            return
+        
         # Save current brightness before turning off
         if hasattr(self.ui, 'display') and self.ui.display:
-            self._saved_brightness = self.ui.display.brightness if self.ui.display.brightness > 0 else 100
+            current_brightness = getattr(self.ui.display, 'brightness', 100)
+            self._saved_brightness = current_brightness if current_brightness > 0 else 100
         self.screen_off = True
         if hasattr(self.ui, 'display') and self.ui.display:
             self.ui.display.set_brightness(0)
@@ -230,9 +239,16 @@ class LockScreen(App):
     
     def update(self, dt: float):
         """Update lock screen state (called every frame)."""
+        # Only check timeout if we're actually locked
+        if not self.is_locked:
+            return
+        
         # Check for timeout and sleep screen if needed
-        if not self.screen_off and self.check_timeout():
-            self.sleep_screen()
+        # Add small buffer (0.1s) to prevent race conditions
+        if not self.screen_off and self.timeout_seconds > 0:
+            elapsed = time.time() - self.last_activity
+            if elapsed >= (self.timeout_seconds - 0.1):
+                self.sleep_screen()
     
     def on_key(self, event: KeyEvent) -> bool:
         """Handle key input."""
