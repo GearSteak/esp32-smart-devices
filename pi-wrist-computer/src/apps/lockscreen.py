@@ -34,6 +34,7 @@ class LockScreen(App):
         self.is_locked = False
         self.screen_off = False
         self.last_activity = time.time()
+        self._saved_brightness = 100  # Store original brightness before sleep
         
         # Passcode
         self.passcode = None  # None = no passcode, otherwise "1234"
@@ -67,9 +68,8 @@ class LockScreen(App):
                     self.require_passcode = data.get('require_passcode', False)
                     self.background_image_path = data.get('background_image', None)
                     
-                    # Load background image if path is set
-                    if self.background_image_path:
-                        self._load_background_image()
+                    # Don't load image here - defer until display is ready
+                    # Image will be loaded in draw() or on_enter()
         except Exception as e:
             print(f"Error loading lock settings: {e}")
     
@@ -80,15 +80,23 @@ class LockScreen(App):
             return
         
         try:
+            # Check if display is available
+            if not hasattr(self.ui, 'display') or self.ui.display is None:
+                return
+            
             # Expand user path and check if file exists
             img_path = os.path.expanduser(self.background_image_path)
             if os.path.exists(img_path):
                 img = Image.open(img_path)
                 # Resize to fit display (get dimensions from UI)
-                display_width = self.ui.display.width
-                display_height = self.ui.display.height
-                img = img.resize((display_width, display_height), Image.Resampling.LANCZOS)
-                self._bg_image = img
+                try:
+                    display_width = self.ui.display.width
+                    display_height = self.ui.display.height
+                    img = img.resize((display_width, display_height), Image.Resampling.LANCZOS)
+                    self._bg_image = img
+                except AttributeError:
+                    # Display not fully initialized yet
+                    self._bg_image = None
             else:
                 self._bg_image = None
                 print(f"Background image not found: {img_path}")
@@ -161,7 +169,11 @@ class LockScreen(App):
         # Turn screen back on if off
         if self.screen_off:
             self.screen_off = False
-            self.ui.display.set_brightness(self.ui.display.brightness or 100)
+            # Restore saved brightness (default to 100 if not saved)
+            if hasattr(self.ui, 'display') and self.ui.display:
+                # Ensure we have a valid brightness value
+                brightness = self._saved_brightness if self._saved_brightness > 0 else 100
+                self.ui.display.set_brightness(brightness)
     
     def lock(self):
         """Lock the device."""
@@ -186,24 +198,50 @@ class LockScreen(App):
     
     def sleep_screen(self):
         """Turn off screen to save power."""
+        # Save current brightness before turning off
+        if hasattr(self.ui, 'display') and self.ui.display:
+            self._saved_brightness = self.ui.display.brightness if self.ui.display.brightness > 0 else 100
         self.screen_off = True
-        self.ui.display.set_brightness(0)
+        if hasattr(self.ui, 'display') and self.ui.display:
+            self.ui.display.set_brightness(0)
     
     def on_enter(self):
         """Called when lock screen becomes active."""
         self.entered_code = ""
         self.is_locked = True
+        # Reset activity timer
+        self.last_activity = time.time()
+        # Ensure screen is on
+        if self.screen_off:
+            self.screen_off = False
+            if hasattr(self.ui, 'display') and self.ui.display:
+                self.ui.display.set_brightness(self._saved_brightness)
+        # Load background image now that display is ready
+        if self.background_image_path and not self._bg_image:
+            self._load_background_image()
     
     def on_exit(self):
         """Called when leaving lock screen."""
-        pass
+        # Restore brightness when leaving lock screen
+        if self.screen_off:
+            self.screen_off = False
+            if hasattr(self.ui, 'display') and self.ui.display:
+                self.ui.display.set_brightness(self._saved_brightness)
+    
+    def update(self, dt: float):
+        """Update lock screen state (called every frame)."""
+        # Check for timeout and sleep screen if needed
+        if not self.screen_off and self.check_timeout():
+            self.sleep_screen()
     
     def on_key(self, event: KeyEvent) -> bool:
         """Handle key input."""
+        # Check if screen was off before resetting activity
+        was_screen_off = self.screen_off
         self.reset_activity()
         
-        # If screen was off, first press just wakes it
-        if self.screen_off:
+        # If screen was off, first press just wakes it (don't process the key)
+        if was_screen_off:
             return True
         
         # Check lockout
@@ -247,9 +285,12 @@ class LockScreen(App):
     
     def on_click(self, x: int, y: int) -> bool:
         """Handle click."""
+        # Check if screen was off before resetting activity
+        was_screen_off = self.screen_off
         self.reset_activity()
         
-        if self.screen_off:
+        # If screen was off, first click just wakes it (don't process the click)
+        if was_screen_off:
             return True
         
         if not self.require_passcode or not self.passcode:
@@ -263,6 +304,10 @@ class LockScreen(App):
             display.clear('black')
             display.refresh()
             return
+        
+        # Lazy-load background image if needed
+        if self.background_image_path and not self._bg_image:
+            self._load_background_image()
         
         # Background - image or solid color
         if self._bg_image:
