@@ -136,12 +136,12 @@ class MemoryApp(App):
         # Info
         display.text(10, self.ui.STATUS_BAR_HEIGHT + 15, f"Moves: {self.moves}", 'white', 12)
         
-        cell_size = 45
-        gap = 5
+        cell_size = 40  # Reduced for 240px height
+        gap = 4
         grid_width = self.cols * cell_size + (self.cols - 1) * gap
         grid_height = self.rows * cell_size + (self.rows - 1) * gap
         offset_x = (display.width - grid_width) // 2
-        offset_y = self.ui.STATUS_BAR_HEIGHT + 40
+        offset_y = self.ui.STATUS_BAR_HEIGHT + 30
         
         for r in range(self.rows):
             for c in range(self.cols):

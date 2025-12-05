@@ -173,12 +173,12 @@ class WordleApp(App):
         display.text(display.width // 2, self.ui.STATUS_BAR_HEIGHT + 12, 
                     "WORDLE", 'white', 14, 'mm')
         
-        # Grid
-        cell_size = 32
-        gap = 4
+        # Grid - reduced to fit 240px height
+        cell_size = 26
+        gap = 3
         grid_width = self.WORD_LENGTH * (cell_size + gap) - gap
         grid_x = (display.width - grid_width) // 2
-        grid_y = self.ui.STATUS_BAR_HEIGHT + 30
+        grid_y = self.ui.STATUS_BAR_HEIGHT + 22
         
         colors = {
             'correct': '#538d4e',
@@ -209,23 +209,23 @@ class WordleApp(App):
                 else:
                     display.rect(x, y, cell_size, cell_size, outline='#3a3a3c')
         
-        # Keyboard
-        kb_y = grid_y + self.MAX_GUESSES * (cell_size + gap) + 15
+        # Keyboard - compact layout
+        kb_y = grid_y + self.MAX_GUESSES * (cell_size + gap) + 8
         rows = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM']
         
         for row_idx, row in enumerate(rows):
-            row_width = len(row) * 20
+            row_width = len(row) * 17
             start_x = (display.width - row_width) // 2
             
             for i, letter in enumerate(row):
-                x = start_x + i * 20
-                y = kb_y + row_idx * 25
+                x = start_x + i * 17
+                y = kb_y + row_idx * 18
                 
                 status = self.used_letters.get(letter, 'empty')
                 color = colors.get(status, '#818384')
                 
-                display.rect(x, y, 18, 22, fill=color)
-                display.text(x + 9, y + 11, letter, 'white', 10, 'mm')
+                display.rect(x, y, 15, 16, fill=color)
+                display.text(x + 8, y + 8, letter, 'white', 8, 'mm')
         
         # Message
         if self.message:

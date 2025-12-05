@@ -12,11 +12,11 @@ from ...input.cardkb import KeyEvent, KeyCode
 class MinesweeperApp(App):
     """Minesweeper game."""
     
-    # Difficulty presets
+    # Difficulty presets (cols, rows, mines) - adjusted for 240px screen height
     DIFFICULTIES = {
-        'easy': (8, 10, 10),      # cols, rows, mines
-        'medium': (12, 16, 30),
-        'hard': (16, 20, 60),
+        'easy': (10, 10, 10),     # cols, rows, mines
+        'medium': (14, 12, 25),
+        'hard': (18, 12, 40),
     }
     
     def __init__(self, ui):
@@ -30,7 +30,7 @@ class MinesweeperApp(App):
         
         self.difficulty = 'easy'
         self.cols, self.rows, self.mine_count = self.DIFFICULTIES[self.difficulty]
-        self.cell_size = 16
+        self.cell_size = 15  # Will be calculated dynamically
         
         self.grid = []
         self.revealed = []
@@ -154,11 +154,16 @@ class MinesweeperApp(App):
         display.rect(0, self.ui.STATUS_BAR_HEIGHT, display.width, 
                     display.height - self.ui.STATUS_BAR_HEIGHT, fill='#1a1a1a')
         
+        # Calculate cell size to fit screen
+        available_height = display.height - self.ui.STATUS_BAR_HEIGHT - 50  # Header + footer
+        available_width = display.width - 20
+        self.cell_size = min(available_width // self.cols, available_height // self.rows, 16)
+        
         # Calculate offset to center grid
         grid_width = self.cols * self.cell_size
         grid_height = self.rows * self.cell_size
         offset_x = (display.width - grid_width) // 2
-        offset_y = self.ui.STATUS_BAR_HEIGHT + 25
+        offset_y = self.ui.STATUS_BAR_HEIGHT + 22
         
         # Header
         flags_used = sum(row.count(True) for row in self.flagged)

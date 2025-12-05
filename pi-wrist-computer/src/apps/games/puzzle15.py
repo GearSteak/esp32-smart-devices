@@ -112,10 +112,10 @@ class Puzzle15App(App):
         # Info
         display.text(10, self.ui.STATUS_BAR_HEIGHT + 15, f"Moves: {self.moves}", 'white', 12)
         
-        cell_size = 50
+        cell_size = 42  # Reduced for 240px height
         grid_size = self.SIZE * cell_size
         offset_x = (display.width - grid_size) // 2
-        offset_y = self.ui.STATUS_BAR_HEIGHT + 40
+        offset_y = self.ui.STATUS_BAR_HEIGHT + 30
         
         for r in range(self.SIZE):
             for c in range(self.SIZE):

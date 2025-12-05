@@ -14,8 +14,8 @@ import time
 class SnakeApp(App):
     """Snake game."""
     
-    GRID_SIZE = 15
-    CELL_SIZE = 14
+    GRID_SIZE = 14
+    CELL_SIZE = 13  # Reduced to fit 240px height
     
     def __init__(self, ui):
         super().__init__(ui)

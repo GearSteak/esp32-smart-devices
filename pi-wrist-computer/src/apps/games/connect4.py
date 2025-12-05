@@ -171,11 +171,11 @@ class Connect4App(App):
         display.rect(0, self.ui.STATUS_BAR_HEIGHT, display.width,
                     display.height - self.ui.STATUS_BAR_HEIGHT, fill='#1a1a1a')
         
-        cell_size = 30
+        cell_size = 26  # Reduced for 240px height
         grid_width = self.COLS * cell_size
         grid_height = self.ROWS * cell_size
         offset_x = (display.width - grid_width) // 2
-        offset_y = self.ui.STATUS_BAR_HEIGHT + 45
+        offset_y = self.ui.STATUS_BAR_HEIGHT + 35
         
         # Turn indicator / preview
         preview_y = self.ui.STATUS_BAR_HEIGHT + 20

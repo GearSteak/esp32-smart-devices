@@ -39,9 +39,9 @@ class Card:
 class SolitaireApp(App):
     """Solitaire game."""
     
-    CARD_WIDTH = 28
-    CARD_HEIGHT = 36
-    CARD_OVERLAP = 12
+    CARD_WIDTH = 26
+    CARD_HEIGHT = 32
+    CARD_OVERLAP = 10  # Reduced for 240px height
     
     def __init__(self, ui):
         super().__init__(ui)

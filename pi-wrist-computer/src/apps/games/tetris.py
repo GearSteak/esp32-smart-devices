@@ -42,7 +42,7 @@ class TetrisApp(App):
     
     GRID_WIDTH = 10
     GRID_HEIGHT = 20
-    CELL_SIZE = 12
+    CELL_SIZE = 10  # Reduced to fit 240px height
     
     def __init__(self, ui):
         super().__init__(ui)

@@ -36,8 +36,8 @@ class Game2048App(App):
     """2048 game."""
     
     GRID_SIZE = 4
-    CELL_SIZE = 50
-    CELL_GAP = 5
+    CELL_SIZE = 42  # Reduced to fit 240px height
+    CELL_GAP = 4
     
     def __init__(self, ui):
         super().__init__(ui)
@@ -209,13 +209,13 @@ class Game2048App(App):
         # Calculate grid position
         grid_total = self.GRID_SIZE * self.CELL_SIZE + (self.GRID_SIZE + 1) * self.CELL_GAP
         grid_x = (display.width - grid_total) // 2
-        grid_y = self.ui.STATUS_BAR_HEIGHT + 40
+        grid_y = self.ui.STATUS_BAR_HEIGHT + 28  # Reduced top margin
         
-        # Scores
-        display.text(10, self.ui.STATUS_BAR_HEIGHT + 8, 
-                    f'Score: {self.score}', 'white', 14)
-        display.text(display.width - 10, self.ui.STATUS_BAR_HEIGHT + 8,
-                    f'Best: {self.best_score}', '#888888', 12, 'rt')
+        # Scores (compact)
+        display.text(10, self.ui.STATUS_BAR_HEIGHT + 5, 
+                    f'Score: {self.score}', 'white', 11)
+        display.text(display.width - 10, self.ui.STATUS_BAR_HEIGHT + 5,
+                    f'Best: {self.best_score}', '#888888', 11, 'rt')
         
         # Grid background
         display.rect(grid_x, grid_y, grid_total, grid_total,

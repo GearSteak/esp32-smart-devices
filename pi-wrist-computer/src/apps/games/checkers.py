@@ -228,10 +228,10 @@ class CheckersApp(App):
         display.rect(0, self.ui.STATUS_BAR_HEIGHT, display.width,
                     display.height - self.ui.STATUS_BAR_HEIGHT, fill='#1a1a1a')
         
-        cell_size = 28
+        cell_size = 24  # Reduced for 240px height
         board_size = self.SIZE * cell_size
         offset_x = (display.width - board_size) // 2
-        offset_y = self.ui.STATUS_BAR_HEIGHT + 25
+        offset_y = self.ui.STATUS_BAR_HEIGHT + 18
         
         for row in range(self.SIZE):
             for col in range(self.SIZE):
@@ -259,12 +259,12 @@ class CheckersApp(App):
                 if piece:
                     pc, is_king = piece
                     if pc == 'red':
-                        display.circle(x + cell_size // 2, y + cell_size // 2, 10, fill='#ff0000')
+                        display.circle(x + cell_size // 2, y + cell_size // 2, 9, fill='#ff0000')
                     else:
-                        display.circle(x + cell_size // 2, y + cell_size // 2, 10, fill='#333333')
+                        display.circle(x + cell_size // 2, y + cell_size // 2, 9, fill='#333333')
                     
                     if is_king:
-                        display.text(x + cell_size // 2, y + cell_size // 2, '♔', '#ffff00', 12, 'mm')
+                        display.text(x + cell_size // 2, y + cell_size // 2, '♔', '#ffff00', 10, 'mm')
         
         # Game over
         if self.game_over:

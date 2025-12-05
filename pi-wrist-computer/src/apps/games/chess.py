@@ -228,10 +228,10 @@ class ChessApp(App):
         display.rect(0, self.ui.STATUS_BAR_HEIGHT, display.width,
                     display.height - self.ui.STATUS_BAR_HEIGHT, fill='#1a1a1a')
         
-        cell_size = 28
+        cell_size = 24  # Reduced for 240px height
         board_size = 8 * cell_size
         offset_x = (display.width - board_size) // 2
-        offset_y = self.ui.STATUS_BAR_HEIGHT + 20
+        offset_y = self.ui.STATUS_BAR_HEIGHT + 15
         
         for row in range(8):
             for col in range(8):
@@ -260,7 +260,7 @@ class ChessApp(App):
                     symbol = self.PIECES.get(piece, '?')
                     pcolor = '#ffffff' if self._is_white(piece) else '#000000'
                     display.text(x + cell_size // 2, y + cell_size // 2,
-                               symbol, pcolor, 18, 'mm')
+                               symbol, pcolor, 14, 'mm')
         
         # Turn indicator
         turn = "White" if self.white_turn else "Black"
