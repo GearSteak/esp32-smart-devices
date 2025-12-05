@@ -127,6 +127,7 @@ class HomeApp(App):
         self.current_folder = None
         self.folder_items = []
         self.folder_selected = 0
+        self.folder_scroll = 0  # Scroll offset for folder view
     
     def on_enter(self):
         """Setup home screen."""
@@ -214,6 +215,7 @@ class HomeApp(App):
         self.current_folder = folder_id
         self.folder_items = []
         self.folder_selected = 0
+        self.folder_scroll = 0  # Reset scroll when opening folder
         
         for app_id in folder['apps']:
             if app_id in self.ui.apps:
@@ -286,16 +288,28 @@ class HomeApp(App):
     
     def _handle_folder_key(self, event: KeyEvent) -> bool:
         """Handle keys in folder view."""
+        # Calculate visible items
+        item_height = 50
+        header_height = 45
+        available_height = self.ui.display.height - self.ui.STATUS_BAR_HEIGHT - header_height - 10
+        max_visible = available_height // item_height
+        
         if event.code == KeyCode.ESC or event.code == KeyCode.BACKSPACE:
             self._close_folder()
             return True
         elif event.code == KeyCode.UP:
             if self.folder_selected > 0:
                 self.folder_selected -= 1
+                # Scroll up if needed
+                if self.folder_selected < self.folder_scroll:
+                    self.folder_scroll = self.folder_selected
             return True
         elif event.code == KeyCode.DOWN:
             if self.folder_selected < len(self.folder_items) - 1:
                 self.folder_selected += 1
+                # Scroll down if needed
+                if self.folder_selected >= self.folder_scroll + max_visible:
+                    self.folder_scroll = self.folder_selected - max_visible + 1
             return True
         elif event.code == KeyCode.ENTER:
             if self.folder_items:
@@ -332,7 +346,7 @@ class HomeApp(App):
                 icon.draw(display)
     
     def _draw_folder(self, display: Display):
-        """Draw folder contents."""
+        """Draw folder contents with scrolling."""
         if not self.current_folder:
             return
         
@@ -344,13 +358,22 @@ class HomeApp(App):
         display.text(45, self.ui.STATUS_BAR_HEIGHT + 17, folder['name'], 'white', 16, 'lm')
         display.text(display.width - 10, self.ui.STATUS_BAR_HEIGHT + 17, '< Back', '#666666', 10, 'rm')
         
-        # App list
+        # App list with scrolling
         item_height = 50
-        start_y = self.ui.STATUS_BAR_HEIGHT + 45
+        header_height = 45
+        start_y = self.ui.STATUS_BAR_HEIGHT + header_height
+        available_height = display.height - self.ui.STATUS_BAR_HEIGHT - header_height - 10
+        max_visible = available_height // item_height
         
-        for i, app in enumerate(self.folder_items):
+        # Draw visible items only
+        for i in range(max_visible):
+            item_index = self.folder_scroll + i
+            if item_index >= len(self.folder_items):
+                break
+            
+            app = self.folder_items[item_index]
             y = start_y + i * item_height
-            selected = (i == self.folder_selected)
+            selected = (item_index == self.folder_selected)
             
             if selected:
                 display.rect(10, y, display.width - 20, item_height - 5, fill='#0066cc')
@@ -362,4 +385,15 @@ class HomeApp(App):
             
             # Name
             display.text(60, y + item_height // 2 - 2, app.info.name, 'white', 14, 'lm')
+        
+        # Scroll indicators
+        if self.folder_scroll > 0:
+            display.text(display.width // 2, start_y - 8, '▲', '#888888', 12, 'mm')
+        
+        if self.folder_scroll + max_visible < len(self.folder_items):
+            display.text(display.width // 2, display.height - 8, '▼', '#888888', 12, 'mm')
+        
+        # Item count
+        display.text(display.width - 10, display.height - 8, 
+                    f'{self.folder_selected + 1}/{len(self.folder_items)}', '#666666', 10, 'rm')
 
