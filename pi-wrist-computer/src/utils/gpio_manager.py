@@ -46,6 +46,13 @@ class GPIOManager:
                     GPIO.setwarnings(False)
                     self._initialized = True
                     return True
+                except RuntimeError as e:
+                    # If mode is already set, that's okay
+                    if "mode" in str(e).lower() and "already" in str(e).lower():
+                        self._initialized = True
+                        return True
+                    print(f"GPIO init failed: {e}")
+                    return False
                 except Exception as e:
                     print(f"GPIO init failed: {e}")
                     return False
@@ -57,11 +64,39 @@ class GPIOManager:
             return False
         
         with self._lock:
+            # If pin is already allocated, assume it's already set up
+            if pin in self._allocated_pins:
+                return True
+            
             try:
                 GPIO.setup(pin, GPIO.OUT)
                 self._allocated_pins.add(pin)
                 return True
+            except RuntimeError as e:
+                error_str = str(e).lower()
+                # Handle "GPIO not allocated" or "not set for this channel" errors
+                if "not allocated" in error_str or "not set" in error_str:
+                    # Re-initialize and try again
+                    try:
+                        GPIO.setmode(GPIO.BCM)
+                        GPIO.setup(pin, GPIO.OUT)
+                        self._allocated_pins.add(pin)
+                        return True
+                    except Exception as e2:
+                        print(f"GPIO setup output pin {pin} failed after re-init: {e2}")
+                        return False
+                # If pin is already set up, just add it to allocated list
+                elif "already" in error_str or "in use" in error_str:
+                    self._allocated_pins.add(pin)
+                    return True
+                print(f"GPIO setup output pin {pin} failed: {e}")
+                return False
             except Exception as e:
+                error_str = str(e).lower()
+                # If pin is already set up, just add it to allocated list
+                if "already" in error_str or "in use" in error_str:
+                    self._allocated_pins.add(pin)
+                    return True
                 print(f"GPIO setup output pin {pin} failed: {e}")
                 return False
     
@@ -71,12 +106,20 @@ class GPIOManager:
             return False
         
         with self._lock:
+            # If pin is already allocated, assume it's already set up
+            if pin in self._allocated_pins:
+                return True
+            
             try:
                 pud = GPIO.PUD_UP if pull_up else GPIO.PUD_DOWN
                 GPIO.setup(pin, GPIO.IN, pull_up_down=pud)
                 self._allocated_pins.add(pin)
                 return True
             except Exception as e:
+                # If pin is already set up, just add it to allocated list
+                if "already" in str(e).lower() or "in use" in str(e).lower() or "not allocated" in str(e).lower():
+                    self._allocated_pins.add(pin)
+                    return True
                 print(f"GPIO setup input pin {pin} failed: {e}")
                 return False
     
