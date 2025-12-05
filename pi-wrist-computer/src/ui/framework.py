@@ -351,11 +351,12 @@ class UI:
     STATUS_BAR_HEIGHT = 20
     
     def __init__(self, display: Display, cardkb: CardKB, trackball: Trackball,
-                 config: dict):
+                 usb_joystick=None, config: dict = None):
         self.display = display
         self.cardkb = cardkb
         self.trackball = trackball
-        self.config = config
+        self.usb_joystick = usb_joystick
+        self.config = config or {}
         
         # Screen dimensions (below status bar)
         self.content_rect = Rect(
@@ -397,6 +398,11 @@ class UI:
         self.cardkb.on_key(self._on_key)
         self.trackball.on_move(self._on_cursor_move)
         self.trackball.on_click(self._on_click)
+        
+        # Add USB joystick support if available
+        if self.usb_joystick and self.usb_joystick.enabled:
+            self.usb_joystick.on_move(self._on_cursor_move)
+            self.usb_joystick.on_click(self._on_click)
     
     def _on_key(self, event: KeyEvent):
         """Handle keyboard input."""
@@ -420,8 +426,15 @@ class UI:
             return
     
     def _on_cursor_move(self, x: int, y: int):
-        """Handle cursor movement from trackball."""
+        """Handle cursor movement from trackball or USB joystick."""
+        # Get movement from trackball
         dx, dy = self.trackball.get_delta()
+        
+        # Add movement from USB joystick if available
+        if self.usb_joystick and self.usb_joystick.enabled:
+            jx, jy = self.usb_joystick.get_delta()
+            dx += jx
+            dy += jy
         
         # Update cursor position
         self.cursor_x = max(0, min(self.display.width - 1, self.cursor_x + dx))
@@ -433,7 +446,7 @@ class UI:
             self.current_app.on_cursor_move(self.cursor_x, self.cursor_y)
     
     def _on_click(self, pressed: bool):
-        """Handle trackball click."""
+        """Handle trackball or USB joystick click."""
         # Reset lock screen activity timer (only if lock screen is active)
         if self.current_app and self.current_app.info.id == 'lockscreen':
             lock_app = self.apps.get('lockscreen')

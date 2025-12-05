@@ -324,10 +324,15 @@ class LockScreen(App):
             # Draw clock (large, dim)
             now = datetime.now()
             time_str = now.strftime('%H:%M')
+            date_str = now.strftime('%b %d')
             
             # Clock with shadow for visibility even at low brightness
-            display.text(display.width // 2 + 1, display.height // 2 + 1, time_str, '#000000', 64, 'mm')  # Shadow
-            display.text(display.width // 2, display.height // 2, time_str, '#666666', 64, 'mm')  # Dim clock (brighter)
+            display.text(display.width // 2 + 1, display.height // 2 - 20 + 1, time_str, '#000000', 64, 'mm')  # Shadow
+            display.text(display.width // 2, display.height // 2 - 20, time_str, '#666666', 64, 'mm')  # Dim clock (brighter)
+            
+            # Date below clock
+            display.text(display.width // 2 + 1, display.height // 2 + 50 + 1, date_str, '#000000', 20, 'mm')  # Shadow
+            display.text(display.width // 2, display.height // 2 + 50, date_str, '#666666', 20, 'mm')  # Date
             
             display.refresh()
             return

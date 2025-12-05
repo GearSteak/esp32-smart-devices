@@ -38,6 +38,17 @@ JoystickInputModule::JoystickInputModule()
     memset(&currentState, 0, sizeof(currentState));
     memset(&lastSentState, 0, sizeof(lastSentState));
     
+    // Initialize USB Serial for joystick events
+#ifdef USE_USB_SERIAL
+    // Note: Serial may already be initialized by Meshtastic framework
+    // This ensures it's configured for our use case
+    if (!Serial) {
+        Serial.begin(USB_SERIAL_BAUD);
+    }
+    Serial.setTimeout(10);
+    LOG_INFO("USB Serial ready at %d baud for joystick events\n", USB_SERIAL_BAUD);
+#endif
+    
     initADC();
     
     // Configure button pins with internal pullup
@@ -49,6 +60,12 @@ JoystickInputModule::JoystickInputModule()
 
 #ifdef BUTTON_BACK_PIN
     pinMode(BUTTON_BACK_PIN, INPUT_PULLUP);
+#endif
+
+#ifdef HAS_TILT_SENSOR
+    // Configure tilt sensor pin with internal pullup
+    pinMode(TILT_SENSOR_PIN, INPUT_PULLUP);
+    LOG_INFO("Tilt sensor (SW-520D) enabled on GPIO%d\n", TILT_SENSOR_PIN);
 #endif
 
     LOG_INFO("JoystickInputModule initialized\n");
@@ -245,11 +262,34 @@ void JoystickInputModule::sendJoystickEvent()
               currentState.layer, currentState.seq);
 }
 
+void JoystickInputModule::processTiltSensor()
+{
+#ifdef HAS_TILT_SENSOR
+    // Read tilt sensor (active LOW when tilted)
+    bool tilted = (digitalRead(TILT_SENSOR_PIN) == LOW);
+    
+    if (tilted) {
+        // Apply tilt movement to joystick state
+        // Tilt sensor overrides joystick when active
+        if (TILT_DIRECTION_X != 0) {
+            currentState.x = TILT_DIRECTION_X * TILT_MOVEMENT_SPEED;
+        }
+        if (TILT_DIRECTION_Y != 0) {
+            currentState.y = TILT_DIRECTION_Y * TILT_MOVEMENT_SPEED;
+        }
+    }
+    // If not tilted, joystick values remain from readAxis()
+#endif
+}
+
 int32_t JoystickInputModule::runOnce()
 {
     // Read joystick axes
     currentState.x = readAxis(JOYSTICK_X_PIN, JOYSTICK_INVERT_X);
     currentState.y = readAxis(JOYSTICK_Y_PIN, JOYSTICK_INVERT_Y);
+    
+    // Process tilt sensor (overrides joystick if tilted)
+    processTiltSensor();
     
     // Process button states
     processButtons();
@@ -280,11 +320,12 @@ void JoystickInputModule::setLayer(uint8_t layer)
     }
 }
 
-// The actual BLE send is implemented in MainDeviceBridgeModule
-// This is a forward declaration / weak symbol that gets overridden
-__attribute__((weak)) void sendJoystickToMainDevice(const JoystickEvent &evt)
+// Send joystick event via USB Serial
+void sendJoystickToMainDevice(const JoystickEvent &evt)
 {
-    LOG_WARN("sendJoystickToMainDevice not implemented - MainDeviceBridgeModule not linked?\n");
+    // Send via USB Serial (8-byte packet)
+    // Format: [x(1)][y(1)][buttons(1)][layer(1)][seq(4)]
+    Serial.write((uint8_t *)&evt, sizeof(JoystickEvent));
 }
 
 #endif // HAS_JOYSTICK

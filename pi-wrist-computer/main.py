@@ -21,6 +21,7 @@ from src.ui.display import Display
 from src.ui.framework import UI, Notification
 from src.input.cardkb import CardKB
 from src.input.trackball import Trackball
+from src.input.usb_joystick import USBJoystick
 from src.services.gps import GPSService
 from src.services.battery import BatteryService
 
@@ -31,6 +32,7 @@ from src.apps.notes import NotesApp
 from src.apps.calendar_app import CalendarApp
 from src.apps.calculator import CalculatorApp
 from src.apps.weather import WeatherApp
+from src.apps.clock import ClockApp
 from src.apps.games.tetris import TetrisApp
 from src.apps.games.snake import SnakeApp
 from src.apps.games.game_2048 import Game2048App
@@ -86,6 +88,9 @@ class PiWristComputer:
         print("Initializing trackball...")
         self.trackball = Trackball(self.config.get('input', {}).get('trackball', {}))
         
+        print("Initializing USB joystick (ESP32 controller)...")
+        self.usb_joystick = USBJoystick(self.config.get('input', {}).get('usb_joystick', {}))
+        
         # Initialize UI
         print("Initializing UI framework...")
         ui_config = self.config.get('ui', {})
@@ -97,6 +102,7 @@ class PiWristComputer:
             self.display, 
             self.cardkb, 
             self.trackball,
+            self.usb_joystick,
             ui_config
         )
         
@@ -137,6 +143,7 @@ class PiWristComputer:
         self.ui.register_app(CalendarApp(self.ui))
         self.ui.register_app(CalculatorApp(self.ui))
         self.ui.register_app(WeatherApp(self.ui))
+        self.ui.register_app(ClockApp(self.ui))
         
         # Games
         self.ui.register_app(TetrisApp(self.ui))

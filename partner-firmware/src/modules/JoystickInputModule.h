@@ -120,6 +120,11 @@ private:
     void processButtons();
 
     /**
+     * @brief Read tilt sensor and apply to joystick state
+     */
+    void processTiltSensor();
+
+    /**
      * @brief Check if state has changed enough to send an update
      * @return true if should send BLE notification
      */

@@ -5,10 +5,10 @@ This document specifies the hardware and firmware for the partner ESP32 device t
 ### 1. Overview
 
 The partner device serves dual purposes:
-1. **Primary input controller** for the main translator device (joystick navigation, buttons)
+1. **Primary input controller** for the main translator device (joystick navigation, buttons, tilt sensor)
 2. **Meshtastic mesh gateway** enabling off-grid text messaging via LoRa
 
-Messages typed on the main device are transmitted over the LoRa mesh network, and incoming mesh messages are displayed on the main device's transparent OLED.
+The device communicates with the main device (pi wrist computer) via **USB Serial** at 115200 baud. Joystick and button events are sent as 8-byte packets over USB. Messages typed on the main device are transmitted over the LoRa mesh network, and incoming mesh messages are displayed on the main device's transparent OLED.
 
 ### 2. Hardware Platform
 
@@ -20,6 +20,7 @@ Messages typed on the main device are transmitted over the LoRa mesh network, an
 | LoRa Radio | SX1262 / LLCC68 / SX1268 module | 868/915 MHz depending on region, +22 dBm TX |
 | Joystick | KY-023 dual-axis analog + button | Connected to ADC1 channels |
 | Buttons | 2× tactile switches (Home, Back) | Active LOW with internal pullup |
+| Tilt Sensor | SW-520D ball tilt switch | GPIO16, generates joystick movement when tilted |
 | Power | 3.7V LiPo + TP4056 charge controller | Or USB power via DevKit |
 | Antenna | u.FL or SMA, tuned for LoRa frequency | **Required** for any transmission |
 
@@ -50,6 +51,11 @@ Joystick (ADC1 - works with WiFi/BLE):
 Buttons:
   GPIO33  →  Home button   [internal pullup, to GND]
   GPIO25  →  Back button   [internal pullup, to GND]
+
+Tilt Sensor (SW-520D):
+  GPIO16  →  Tilt sensor   [internal pullup, active LOW when tilted]
+  GND     →  GND
+  3.3V    →  VCC (optional, if sensor needs power)
 
 Battery Monitoring (optional):
   GPIO36  →  Voltage divider midpoint (100kΩ + 100kΩ)
@@ -85,6 +91,8 @@ Status LED:
 │  │  IO33 ●────┼───● Home Button ─┐               │              │   │
 │  │  IO25 ●────┼───● Back Button ─┴─● GND         │              │   │
 │  │            │                                   │              │   │
+│  │  IO16 ●────┼───● SW-520D Tilt Sensor          │              │   │
+│  │            │         (active LOW)              │              │   │
 │  │  IO36 ●────┼───● Battery voltage divider      │              │   │
 │  │            │         (optional)               │              │   │
 │  │   IO2 ●────┼───● Status LED (onboard)         │              │   │
@@ -146,9 +154,29 @@ meshtastic-firmware/  (fork of github.com/meshtastic/firmware)
 - Receives outgoing messages from main device via BLE writes
 - Maintains connection state and heartbeat
 
-### 4. BLE Protocol Extension
+### 4. Communication Protocol
 
-The partner device extends the existing BLE partner protocol with a new **Mesh Relay Service**.
+The partner device communicates with the main device (pi wrist computer) via **USB Serial** at 115200 baud. Joystick events are sent as 8-byte binary packets.
+
+#### 4.1 USB Serial Protocol
+
+**JoystickEvent Packet (8 bytes):**
+```
+Offset  Size    Type      Description
+0       1       int8_t    X-axis: -100 (left) to +100 (right)
+1       1       int8_t    Y-axis: -100 (down) to +100 (up)
+2       1       uint8_t   Button bitmask (bit0=press, bit1=double, bit2=long, bit3=home, bit4=back)
+3       1       uint8_t   Context layer (0=global, 1=text, 2=csv, 3=modifier, 4=mesh_compose, 5=mesh_inbox)
+4-7     4       uint32_t  Sequence number (little-endian)
+```
+
+The device sends joystick events at 100 Hz (every 10ms) when movement or button state changes.
+
+**Note:** BLE communication is optional and can be disabled by setting `HAS_MAIN_DEVICE_BRIDGE` to 0 in `variant.h`.
+
+### 5. BLE Protocol Extension (Optional)
+
+If BLE is enabled, the partner device extends the existing BLE partner protocol with a new **Mesh Relay Service**.
 
 #### 4.1 Service UUID
 
@@ -205,7 +233,7 @@ The partner device extends the existing BLE partner protocol with a new **Mesh R
 }
 ```
 
-### 5. Message Flow
+### 6. Message Flow
 
 #### 5.1 Receiving Mesh Messages
 
@@ -280,7 +308,7 @@ LoRa antenna
 LoRa antenna → Mesh network
 ```
 
-### 6. UI Integration on Main Device
+### 7. UI Integration on Main Device
 
 #### 6.1 Layer System
 
@@ -310,7 +338,7 @@ The main device uses joystick "layers" to switch input contexts:
 - Short press: view full message / reply
 - Back button: return to previous screen
 
-### 7. Building the Partner Device Firmware
+### 8. Building the Partner Device Firmware
 
 #### 7.1 Prerequisites
 
@@ -389,7 +417,7 @@ pio run -e translator-partner
 pio run -e translator-partner -t upload
 ```
 
-### 8. Bill of Materials
+### 9. Bill of Materials
 
 | Part | Quantity | Est. Price | Source |
 | --- | --- | --- | --- |
@@ -403,14 +431,14 @@ pio run -e translator-partner -t upload
 | Perfboard + wires | 1 | $2 | Local/AliExpress |
 | **Total** | | **~$20-35** | |
 
-### 9. Safety and Regulatory Notes
+### 10. Safety and Regulatory Notes
 
 1. **Antenna required**: Never power the LoRa module without an antenna connected.
 2. **Frequency compliance**: Use the correct frequency for your region.
 3. **Transmission power**: Default Meshtastic settings comply with ISM band limits.
 4. **Battery safety**: Use batteries with built-in protection circuits; do not overcharge or puncture.
 
-### 10. Future Enhancements
+### 11. Future Enhancements
 
 - [ ] Haptic feedback motor for message notifications
 - [ ] GPS module for location sharing

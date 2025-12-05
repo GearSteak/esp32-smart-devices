@@ -44,6 +44,14 @@ input:
     cursor_speed: 5      # pixels per button press
     repeat_delay: 400    # ms before key repeat starts
     repeat_rate: 50      # ms between repeats
+  
+  # USB Serial joystick from ESP32 controller (works alongside trackball)
+  usb_joystick:
+    enabled: true  # Enable USB joystick input from ESP32 controller
+    port: null  # null = auto-detect, or specify like "/dev/ttyUSB0" or "/dev/ttyACM0"
+    baudrate: 115200  # Serial baud rate
+    sensitivity: 2.0  # Movement multiplier (higher = faster)
+    auto_reconnect: true  # Auto-reconnect on disconnect
 
 gps:
   enabled: true

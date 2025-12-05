@@ -78,8 +78,8 @@ class CardKB:
         self._callbacks = []
         self._last_key = 0
         self._last_time = 0
-        self._repeat_delay = 0.1  # Initial delay before repeat (very fast)
-        self._repeat_rate = 0.02  # Time between repeats (extremely fast)
+        self._repeat_delay = 0.05  # Initial delay before repeat (very fast)
+        self._repeat_rate = 0.01  # Time between repeats (extremely fast - 100Hz)
         
         if self.enabled:
             self._init_bus()

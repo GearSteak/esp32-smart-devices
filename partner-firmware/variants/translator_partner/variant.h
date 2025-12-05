@@ -79,6 +79,16 @@
 #define BUTTON_DOUBLE_PRESS_MS  300
 
 // ============================================================================
+// Tilt Sensor Configuration (SW-520D)
+// ============================================================================
+
+#define HAS_TILT_SENSOR         1
+#define TILT_SENSOR_PIN         16      // SW-520D tilt sensor (active LOW when tilted)
+#define TILT_MOVEMENT_SPEED     20      // Joystick movement value when tilted (-100 to +100)
+#define TILT_DIRECTION_X        0       // 0 = no X movement, -1 = left, +1 = right
+#define TILT_DIRECTION_Y        1       // 0 = no Y movement, -1 = down, +1 = up
+
+// ============================================================================
 // Battery Monitoring (Optional)
 // ============================================================================
 
@@ -109,10 +119,15 @@
 #define HAS_GPS                 0
 
 // ============================================================================
-// BLE Configuration
+// Communication Configuration
 // ============================================================================
 
-#define HAS_MAIN_DEVICE_BRIDGE  1
+// Use USB Serial for communication with main device (pi wrist computer)
+#define USE_USB_SERIAL          1
+#define USB_SERIAL_BAUD         115200
+
+// BLE is optional (can be disabled to save power)
+#define HAS_MAIN_DEVICE_BRIDGE  0  // Set to 0 to disable BLE, use USB Serial instead
 #define BLE_NAME                "TransPartner"
 
 // Custom GATT service UUIDs (must match main device)

@@ -106,7 +106,7 @@ class HomeApp(App):
     }
     
     # Apps to show directly on home (not in folders)
-    MAIN_APPS = ['settings', 'weather', 'email', 'browser', 'navigation', 'notifications']
+    MAIN_APPS = ['settings', 'weather', 'clock', 'email', 'browser', 'navigation', 'notifications']
     
     def __init__(self, ui):
         super().__init__(ui)

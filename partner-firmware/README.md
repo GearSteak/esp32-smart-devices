@@ -42,6 +42,9 @@ Buttons:
   GPIO33 → Home
   GPIO25 → Back
 
+Tilt Sensor (SW-520D):
+  GPIO16 → Tilt sensor (active LOW when tilted)
+
 Battery (optional):
   GPIO36 → Voltage divider
 ```
@@ -90,9 +93,24 @@ For full mesh networking functionality:
 ./setup-meshtastic-fork.sh
 ```
 
-## BLE Services
+## Communication
 
-The partner device exposes these custom GATT services:
+The partner device communicates with the main device (pi wrist computer) via **USB Serial** at 115200 baud. Joystick events are sent as 8-byte binary packets.
+
+### USB Serial Protocol
+
+**JoystickEvent (8 bytes):**
+- `int8_t x` (-100 to +100)
+- `int8_t y` (-100 to +100)
+- `uint8_t buttons` (bitmask)
+- `uint8_t layer` (context layer)
+- `uint32_t seq` (sequence number, little-endian)
+
+Connect the ESP32 to the pi wrist computer via USB cable. The pi wrist computer will auto-detect the device.
+
+## BLE Services (Optional)
+
+If BLE is enabled (`HAS_MAIN_DEVICE_BRIDGE=1`), the partner device exposes these custom GATT services:
 
 ### Mesh Relay Service (`4f9a0030-...`)
 - `MeshInbox` (notify) - Incoming mesh messages
