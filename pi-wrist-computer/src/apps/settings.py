@@ -13,6 +13,7 @@ from ..ui.display import Display
 from ..input.cardkb import KeyEvent, KeyCode
 import subprocess
 import os
+import yaml
 
 
 class SettingsApp(App):
@@ -32,6 +33,7 @@ class SettingsApp(App):
             ('bluetooth', 'Bluetooth', '🔵'),
             ('display', 'Display', '☀'),
             ('lock', 'Lock Screen', '🔒'),
+            ('weather', 'Weather', '🌤'),
             ('sound', 'Sound', '🔊'),
             ('gps', 'GPS', '📍'),
             ('apps', 'Apps', '📱'),
@@ -149,8 +151,9 @@ class SettingsApp(App):
     def _open_submenu(self, menu_id: str):
         """Open a submenu."""
         self.in_submenu = True
-        self.submenu_index = 0
+        self.submenu_index = 0  # Reset index when opening submenu
         self.submenu_scroll = 0  # Reset scroll when opening submenu
+        self.entering_passcode = False  # Reset passcode entry state
         
         if menu_id == 'display':
             brightness = self.ui.display.brightness
@@ -198,6 +201,21 @@ class SettingsApp(App):
                 ('lock_set_bg', 'Set Background Image...', None),
                 ('lock_clear_bg', 'Clear Background', None),
                 ('lock_now', 'Lock Now', None),
+            ]
+        elif menu_id == 'weather':
+            # Get weather app
+            weather_app = self.ui.apps.get('weather')
+            if weather_app:
+                location = weather_app.location or 'Not set'
+                api_key_set = 'Set' if weather_app.api_key else 'Not set'
+            else:
+                location = 'Not set'
+                api_key_set = 'Not set'
+            
+            self.submenu_items = [
+                ('weather_location', f'Location: {location[:20]}', None),
+                ('weather_set_location', 'Set Location...', None),
+                ('weather_api_key', f'API Key: {api_key_set}', None),
             ]
         elif menu_id == 'about':
             self.submenu_items = [
@@ -320,6 +338,26 @@ class SettingsApp(App):
             lock_app = self.ui.apps.get('lockscreen')
             if lock_app:
                 lock_app.lock()
+        elif item_id == 'weather_set_location':
+            # Use OSK to enter location
+            weather_app = self.ui.apps.get('weather')
+            current_location = weather_app.location if weather_app else ""
+            self.ui.show_osk(
+                "Weather Location",
+                current_location,
+                lambda loc: self._set_weather_location(loc),
+                max_length=50
+            )
+        elif item_id == 'weather_api_key':
+            # Use OSK to enter API key
+            weather_app = self.ui.apps.get('weather')
+            current_key = weather_app.api_key if weather_app else ""
+            self.ui.show_osk(
+                "Weather API Key",
+                current_key,
+                lambda key: self._set_weather_api_key(key),
+                max_length=50
+            )
     
     def on_click(self, x: int, y: int) -> bool:
         # Calculate which item was clicked
@@ -352,6 +390,59 @@ class SettingsApp(App):
                 if item[0] == 'lock_bg_image':
                     self.submenu_items[i] = ('lock_bg_image', f'Background: {bg_status}', None)
                     break
+    
+    def _set_weather_location(self, location: str):
+        """Set weather location and save to config."""
+        if not location:
+            return
+        
+        weather_app = self.ui.apps.get('weather')
+        if weather_app:
+            # Use the weather app's method to set location (which saves to config)
+            weather_app._set_location(location)
+            # Update menu item
+            for i, item in enumerate(self.submenu_items):
+                if item[0] == 'weather_location':
+                    display_loc = location[:20] if len(location) <= 20 else location[:17] + '...'
+                    self.submenu_items[i] = ('weather_location', f'Location: {display_loc}', None)
+                    break
+    
+    def _set_weather_api_key(self, api_key: str):
+        """Set weather API key and save to config."""
+        weather_app = self.ui.apps.get('weather')
+        if weather_app:
+            weather_app.api_key = api_key.strip()
+            # Save to config.yaml
+            config_path = 'config.yaml'
+            if not os.path.exists(config_path):
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                config_path = os.path.join(base_dir, 'config.yaml')
+            
+            try:
+                if os.path.exists(config_path):
+                    with open(config_path, 'r') as f:
+                        config = yaml.safe_load(f) or {}
+                else:
+                    config = {}
+                
+                if 'apps' not in config:
+                    config['apps'] = {}
+                if 'weather' not in config['apps']:
+                    config['apps']['weather'] = {}
+                
+                config['apps']['weather']['api_key'] = api_key.strip()
+                
+                with open(config_path, 'w') as f:
+                    yaml.dump(config, f, default_flow_style=False)
+                
+                # Update menu item
+                key_status = 'Set' if api_key.strip() else 'Not set'
+                for i, item in enumerate(self.submenu_items):
+                    if item[0] == 'weather_api_key':
+                        self.submenu_items[i] = ('weather_api_key', f'API Key: {key_status}', None)
+                        break
+            except Exception as e:
+                print(f"Error saving API key: {e}")
     
     def draw(self, display: Display):
         """Draw settings screen."""

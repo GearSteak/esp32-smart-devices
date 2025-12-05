@@ -406,15 +406,18 @@ class UI:
             if lock_app:
                 lock_app.reset_activity()
         
-        # ESC returns to home (unless on lock screen)
+        # Pass to current app first
+        if self.current_app:
+            handled = self.current_app.on_key(event)
+            # If app handled ESC, don't do default behavior
+            if handled and event.code == KeyCode.ESC:
+                return
+        
+        # ESC returns to home (unless on lock screen or app already handled it)
         if event.code == KeyCode.ESC:
             if self.current_app and self.current_app.info.id != 'lockscreen':
                 self.go_home()
             return
-        
-        # Pass to current app
-        if self.current_app:
-            self.current_app.on_key(event)
     
     def _on_cursor_move(self, x: int, y: int):
         """Handle cursor movement from trackball."""

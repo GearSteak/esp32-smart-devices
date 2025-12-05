@@ -211,9 +211,9 @@ class LockScreen(App):
             current_brightness = getattr(self.ui.display, 'brightness', 100)
             self._saved_brightness = current_brightness if current_brightness > 0 else 100
         self.screen_off = True
-        # Set to very low brightness (5%) instead of 0, so clock is still visible
+        # Set to low brightness (15%) instead of 0, so clock is still visible
         if hasattr(self.ui, 'display') and self.ui.display:
-            self.ui.display.set_brightness(5)
+            self.ui.display.set_brightness(15)
     
     def on_enter(self):
         """Called when lock screen becomes active."""
@@ -327,7 +327,7 @@ class LockScreen(App):
             
             # Clock with shadow for visibility even at low brightness
             display.text(display.width // 2 + 1, display.height // 2 + 1, time_str, '#000000', 64, 'mm')  # Shadow
-            display.text(display.width // 2, display.height // 2, time_str, '#333333', 64, 'mm')  # Dim clock
+            display.text(display.width // 2, display.height // 2, time_str, '#666666', 64, 'mm')  # Dim clock (brighter)
             
             display.refresh()
             return
