@@ -125,11 +125,36 @@ class GPIOManager:
     
     def output(self, pin: int, value: bool):
         """Set output pin value."""
-        if GPIO_AVAILABLE and pin in self._allocated_pins:
-            try:
-                GPIO.output(pin, GPIO.HIGH if value else GPIO.LOW)
-            except Exception as e:
+        if not GPIO_AVAILABLE:
+            return
+        
+        # Ensure GPIO is initialized
+        if not self.initialize():
+            return
+        
+        # If pin not allocated, try to set it up
+        if pin not in self._allocated_pins:
+            if not self.setup_output(pin):
+                # Setup failed, can't output
+                return
+        
+        try:
+            GPIO.output(pin, GPIO.HIGH if value else GPIO.LOW)
+        except RuntimeError as e:
+            error_str = str(e).lower()
+            # Handle "GPIO not allocated" by re-initializing
+            if "not allocated" in error_str or "not set" in error_str:
+                try:
+                    GPIO.setmode(GPIO.BCM)
+                    GPIO.setup(pin, GPIO.OUT)
+                    self._allocated_pins.add(pin)
+                    GPIO.output(pin, GPIO.HIGH if value else GPIO.LOW)
+                except Exception as e2:
+                    print(f"GPIO output pin {pin} failed after re-init: {e2}")
+            else:
                 print(f"GPIO output pin {pin} failed: {e}")
+        except Exception as e:
+            print(f"GPIO output pin {pin} failed: {e}")
     
     def input(self, pin: int) -> bool:
         """Read input pin value."""
