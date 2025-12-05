@@ -10,6 +10,7 @@ from ..input.cardkb import KeyEvent, KeyCode
 import requests
 import json
 import os
+import yaml
 from datetime import datetime
 
 
@@ -33,6 +34,7 @@ class WeatherApp(App):
         self.last_update = None
         self.loading = False
         self.error = None
+        self.show_settings = False  # Show location setting menu
     
     def on_enter(self):
         """Fetch weather on enter."""
@@ -101,13 +103,75 @@ class WeatherApp(App):
             self.loading = False
     
     def on_key(self, event: KeyEvent) -> bool:
+        if self.show_settings:
+            if event.code == KeyCode.ESC:
+                self.show_settings = False
+                return True
+            elif event.code == KeyCode.ENTER:
+                # Open OSK to set location
+                self.ui.show_osk(
+                    "Set Location",
+                    self.location,
+                    lambda loc: self._set_location(loc),
+                    max_length=50
+                )
+                self.show_settings = False
+                return True
+            return True
+        
         if event.char == 'r' or event.char == 'R':
             self._fetch_weather()
+            return True
+        elif event.char == 's' or event.char == 'S':
+            # Show settings to set location
+            self.show_settings = True
             return True
         elif event.code == KeyCode.ESC:
             self.ui.go_home()
             return True
         return False
+    
+    def _set_location(self, location: str):
+        """Set location and save to config."""
+        if not location:
+            return
+        
+        self.location = location.strip()
+        
+        # Save to config.yaml (in pi-wrist-computer directory)
+        # Try to find config.yaml relative to where main.py runs
+        config_path = 'config.yaml'
+        # If not found, try relative to this file
+        if not os.path.exists(config_path):
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            config_path = os.path.join(base_dir, 'config.yaml')
+        
+        try:
+            # Read existing config
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    config = yaml.safe_load(f) or {}
+            else:
+                config = {}
+            
+            # Update weather location
+            if 'apps' not in config:
+                config['apps'] = {}
+            if 'weather' not in config['apps']:
+                config['apps']['weather'] = {}
+            
+            config['apps']['weather']['location'] = self.location
+            
+            # Write back
+            with open(config_path, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False)
+            
+            # Reload weather
+            self._fetch_weather()
+            
+        except Exception as e:
+            print(f"Error saving location: {e}")
+            self.error = f"Failed to save location: {str(e)[:30]}"
     
     def _get_weather_icon(self, code: str) -> str:
         """Get weather icon from code."""
@@ -144,11 +208,30 @@ class WeatherApp(App):
                         'R: Retry', '#666666', 12, 'mm')
             return
         
+        if self.show_settings:
+            # Settings menu
+            display.text(display.width // 2, display.height // 2 - 30,
+                        'Location Settings', 'white', 16, 'mm')
+            display.text(display.width // 2, display.height // 2,
+                        f'Current: {self.location or "Not set"}', '#888888', 12, 'mm')
+            display.text(display.width // 2, display.height // 2 + 25,
+                        'Enter: Set Location', '#666666', 11, 'mm')
+            display.text(display.width // 2, display.height // 2 + 40,
+                        'ESC: Cancel', '#666666', 11, 'mm')
+            return
+        
         if not self.weather_data:
-            display.text(display.width // 2, display.height // 2 - 10,
+            display.text(display.width // 2, display.height // 2 - 20,
                         'No weather data', '#888888', 14, 'mm')
-            display.text(display.width // 2, display.height // 2 + 15,
-                        'Configure API key in settings', '#666666', 11, 'mm')
+            if not self.location:
+                display.text(display.width // 2, display.height // 2 + 5,
+                            'S: Set Location', '#666666', 11, 'mm')
+            if not self.api_key:
+                display.text(display.width // 2, display.height // 2 + 20,
+                            'Configure API key in settings', '#666666', 11, 'mm')
+            else:
+                display.text(display.width // 2, display.height // 2 + 20,
+                            'R: Retry', '#666666', 11, 'mm')
             return
         
         # Current weather
@@ -157,6 +240,10 @@ class WeatherApp(App):
         # Forecast
         if self.forecast:
             self._draw_forecast(display)
+        
+        # Help text
+        display.text(display.width // 2, display.height - 10,
+                    'S:Settings R:Refresh', '#333333', 9, 'mm')
     
     def _draw_current(self, display: Display):
         """Draw current weather."""

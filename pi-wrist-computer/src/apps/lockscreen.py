@@ -201,18 +201,19 @@ class LockScreen(App):
         return elapsed >= self.timeout_seconds
     
     def sleep_screen(self):
-        """Turn off screen to save power."""
+        """Turn off screen to save power (but show clock at low brightness)."""
         # Only sleep if we're actually locked
         if not self.is_locked:
             return
         
-        # Save current brightness before turning off
+        # Save current brightness before reducing
         if hasattr(self.ui, 'display') and self.ui.display:
             current_brightness = getattr(self.ui.display, 'brightness', 100)
             self._saved_brightness = current_brightness if current_brightness > 0 else 100
         self.screen_off = True
+        # Set to very low brightness (5%) instead of 0, so clock is still visible
         if hasattr(self.ui, 'display') and self.ui.display:
-            self.ui.display.set_brightness(0)
+            self.ui.display.set_brightness(5)
     
     def on_enter(self):
         """Called when lock screen becomes active."""
@@ -317,7 +318,17 @@ class LockScreen(App):
     def draw(self, display: Display):
         """Draw lock screen."""
         if self.screen_off:
+            # Show clock at reduced brightness
             display.clear('black')
+            
+            # Draw clock (large, dim)
+            now = datetime.now()
+            time_str = now.strftime('%H:%M')
+            
+            # Clock with shadow for visibility even at low brightness
+            display.text(display.width // 2 + 1, display.height // 2 + 1, time_str, '#000000', 64, 'mm')  # Shadow
+            display.text(display.width // 2, display.height // 2, time_str, '#333333', 64, 'mm')  # Dim clock
+            
             display.refresh()
             return
         
