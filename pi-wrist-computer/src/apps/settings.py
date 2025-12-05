@@ -163,11 +163,15 @@ class SettingsApp(App):
                 timeout = 30
                 has_passcode = 'None'
             
+            bg_status = 'Set' if lock_app and lock_app.background_image_path else 'None'
             self.submenu_items = [
                 ('lock_timeout', f'Timeout: {timeout}s', timeout),
                 ('lock_passcode', f'Passcode: {has_passcode}', None),
                 ('lock_set_passcode', 'Set New Passcode...', None),
                 ('lock_clear_passcode', 'Clear Passcode', None),
+                ('lock_bg_image', f'Background: {bg_status}', None),
+                ('lock_set_bg', 'Set Background Image...', None),
+                ('lock_clear_bg', 'Clear Background', None),
                 ('lock_now', 'Lock Now', None),
             ]
         elif menu_id == 'about':
@@ -268,6 +272,25 @@ class SettingsApp(App):
             if lock_app:
                 lock_app.set_passcode(None)
                 self.submenu_items[1] = ('lock_passcode', 'Passcode: None', None)
+        elif item_id == 'lock_set_bg':
+            # Use OSK to enter background image path
+            lock_app = self.ui.apps.get('lockscreen')
+            current_path = lock_app.background_image_path if lock_app and lock_app.background_image_path else ""
+            self.ui.show_osk(
+                "Background Image Path",
+                current_path,
+                lambda path: self._set_background_image(path),
+                max_length=200
+            )
+        elif item_id == 'lock_clear_bg':
+            lock_app = self.ui.apps.get('lockscreen')
+            if lock_app:
+                lock_app.clear_background_image()
+                # Update menu item
+                for i, item in enumerate(self.submenu_items):
+                    if item[0] == 'lock_bg_image':
+                        self.submenu_items[i] = ('lock_bg_image', 'Background: None', None)
+                        break
         elif item_id == 'lock_now':
             lock_app = self.ui.apps.get('lockscreen')
             if lock_app:
@@ -292,6 +315,18 @@ class SettingsApp(App):
                 return True
         
         return False
+    
+    def _set_background_image(self, path: str):
+        """Set background image path for lock screen."""
+        lock_app = self.ui.apps.get('lockscreen')
+        if lock_app:
+            lock_app.set_background_image(path)
+            # Update menu item
+            bg_status = 'Set' if path else 'None'
+            for i, item in enumerate(self.submenu_items):
+                if item[0] == 'lock_bg_image':
+                    self.submenu_items[i] = ('lock_bg_image', f'Background: {bg_status}', None)
+                    break
     
     def draw(self, display: Display):
         """Draw settings screen."""

@@ -573,7 +573,7 @@ class UI:
             while True:
                 self.update()
                 self.draw()
-                time.sleep(1/30)  # ~30 FPS
+                time.sleep(1/60)  # ~60 FPS for better input responsiveness
         except KeyboardInterrupt:
             self.shutdown()
     

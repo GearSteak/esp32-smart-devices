@@ -78,8 +78,8 @@ class CardKB:
         self._callbacks = []
         self._last_key = 0
         self._last_time = 0
-        self._repeat_delay = 0.3  # Initial delay before repeat (faster)
-        self._repeat_rate = 0.08  # Time between repeats (faster)
+        self._repeat_delay = 0.15  # Initial delay before repeat (much faster)
+        self._repeat_rate = 0.03  # Time between repeats (very fast)
         
         if self.enabled:
             self._init_bus()
@@ -113,29 +113,29 @@ class CardKB:
         
         if key == 0:
             self._last_key = 0
+            self._last_time = 0  # Reset timer when key released
             return None
         
         now = time.time()
         
-        # Handle key repeat - only block if same key pressed too quickly
-        if key == self._last_key:
-            elapsed = now - self._last_time
-            # Allow repeat after delay
-            if elapsed < self._repeat_delay:
-                return None
-        
-        self._last_key = key
-        self._last_time = now
-        
         # Determine if special key
         is_special = key < 0x20 or key >= 0x80
+        char = '' if is_special else chr(key)
         
-        # Convert to character
-        if is_special:
-            char = ''
+        # Handle key repeat - allow first press immediately, throttle repeats
+        if key == self._last_key:
+            # Same key - check if enough time has passed for repeat
+            elapsed = now - self._last_time
+            if elapsed < self._repeat_rate:
+                return None  # Too soon, skip this repeat
+            # Update time for next repeat
+            self._last_time = now
         else:
-            char = chr(key)
+            # New key pressed - allow immediately, no delay
+            self._last_key = key
+            self._last_time = now
         
+        # Create and send event
         event = KeyEvent(
             code=key,
             char=char,
