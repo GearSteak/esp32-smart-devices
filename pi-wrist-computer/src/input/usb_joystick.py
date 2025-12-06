@@ -211,7 +211,15 @@ class USBJoystick:
         # This helps recover from misaligned reads (e.g., if text messages were in buffer)
         if abs(x) > 100 or abs(y) > 100:
             # Invalid packet - likely misaligned, skip it
+            print(f"USB Joystick: Invalid packet (x={x}, y={y}), skipping")
             return
+        
+        # Debug: Print first few packets to verify reception
+        if not hasattr(self, '_debug_packet_count'):
+            self._debug_packet_count = 0
+        self._debug_packet_count += 1
+        if self._debug_packet_count <= 5:
+            print(f"USB Joystick: Received packet #{self._debug_packet_count}: x={x} y={y} btn=0x{buttons:02x}")
         
         with self._lock:
             # Convert joystick values to movement deltas
