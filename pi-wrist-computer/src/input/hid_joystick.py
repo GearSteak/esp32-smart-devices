@@ -65,7 +65,10 @@ class HIDJoystick:
         self._stop_event = threading.Event()
         
         if self.enabled:
+            print(f"HID Joystick: Initializing (enabled={self.enabled}, EVDEV_AVAILABLE={EVDEV_AVAILABLE})")
             self._start_read_thread()
+        else:
+            print("HID Joystick: Disabled")
     
     def _find_joystick_device(self) -> Optional[str]:
         """Auto-detect mouse/keyboard device (Arduino Pro Micro or USB keyboard/trackpad)."""
@@ -116,15 +119,19 @@ class HIDJoystick:
         if self._read_thread and self._read_thread.is_alive():
             return
         
+        print("HID Joystick: Starting read thread...")
         self._stop_event.clear()
         self._read_thread = threading.Thread(target=self._read_loop, daemon=True)
         self._read_thread.start()
+        print("HID Joystick: Read thread started")
     
     def _read_loop(self):
         """Main joystick reading loop."""
+        print("HID Joystick: Read loop started")
         while not self._stop_event.is_set():
             try:
-                if not self._connected:
+                if not self._connected and not self._connecting:
+                    print("HID Joystick: Not connected, attempting to connect...")
                     self._connect()
                 
                 if self._connected and self._device:
@@ -155,17 +162,23 @@ class HIDJoystick:
     
     def _connect(self):
         """Connect to joystick device."""
+        print("HID Joystick: _connect() called")
         if not EVDEV_AVAILABLE:
             print("HID Joystick: evdev not available - install: pip3 install evdev")
             return
         
+        self._connecting = True
         try:
             # Find device
             path = self.device_path
+            print(f"HID Joystick: device_path from config: {path}")
             if not path:
+                print("HID Joystick: No path specified, auto-detecting...")
                 path = self._find_joystick_device()
             
             if not path:
+                print("HID Joystick: No device found, cannot connect")
+                self._connecting = False
                 return
             
             # Open device
