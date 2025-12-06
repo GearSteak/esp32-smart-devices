@@ -38,7 +38,18 @@ class HIDJoystick:
                 - sensitivity: Movement multiplier (default: 2.0)
                 - auto_reconnect: Auto-reconnect on disconnect (default: True)
         """
-        self.enabled = config.get('enabled', True) and EVDEV_AVAILABLE
+        print(f"HID Joystick: __init__ called with config: {config}")
+        print(f"HID Joystick: EVDEV_AVAILABLE = {EVDEV_AVAILABLE}")
+        
+        # Allow force-enabling even if evdev isn't available (will fail gracefully later)
+        force_enable = config.get('force_enable', False)
+        if force_enable:
+            print("HID Joystick: FORCE ENABLE - ignoring evdev availability check")
+            self.enabled = config.get('enabled', True)
+        else:
+            self.enabled = config.get('enabled', True) and EVDEV_AVAILABLE
+        
+        print(f"HID Joystick: enabled = {self.enabled}")
         self.device_path = config.get('device_path', None)  # None = auto-detect
         self.sensitivity = config.get('sensitivity', 2.0)
         self.auto_reconnect = config.get('auto_reconnect', True)
@@ -60,6 +71,7 @@ class HIDJoystick:
         
         # Device state
         self._connected = False
+        self._connecting = False
         self._device = None
         self._read_thread = None
         self._stop_event = threading.Event()
@@ -164,7 +176,10 @@ class HIDJoystick:
         """Connect to joystick device."""
         print("HID Joystick: _connect() called")
         if not EVDEV_AVAILABLE:
-            print("HID Joystick: evdev not available - install: pip3 install evdev")
+            print("HID Joystick: ERROR - evdev not available!")
+            print("HID Joystick: Install with: pip3 install evdev")
+            print("HID Joystick: Or system package: sudo apt-get install python3-evdev")
+            print("HID Joystick: Connection will fail without evdev")
             return
         
         self._connecting = True
@@ -199,10 +214,15 @@ class HIDJoystick:
             
             print(f"HID Joystick: Device capabilities: {list(self._device.capabilities().keys())}")
             self._connected = True
+            self._connecting = False
+            print("HID Joystick: Successfully connected!")
             
         except Exception as e:
             print(f"HID Joystick: Connection failed: {e}")
+            import traceback
+            traceback.print_exc()
             self._connected = False
+            self._connecting = False
     
     def _handle_event(self, event):
         """Handle input event from mouse/keyboard."""

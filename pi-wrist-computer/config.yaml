@@ -63,6 +63,7 @@ input:
   # USB HID joystick/keyboard/trackpad (Arduino Pro Micro or USB keyboard/trackpad)
   hid_joystick:
     enabled: true  # Enable USB HID joystick
+    force_enable: true  # Force enable even if evdev not available (will try anyway)
     device_path: null  # null = auto-detect (will find USB keyboard/trackpad or Arduino)
     sensitivity: 2.0  # Movement multiplier (higher = faster)
     auto_reconnect: true  # Auto-reconnect on disconnect
