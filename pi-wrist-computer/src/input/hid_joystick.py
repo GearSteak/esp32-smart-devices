@@ -54,9 +54,9 @@ class HIDJoystick:
         self.sensitivity = config.get('sensitivity', 2.0)
         self.auto_reconnect = config.get('auto_reconnect', True)
         
-        # State
-        self._x = 0
-        self._y = 0
+        # State (use floats for better trackpad sensitivity)
+        self._x = 0.0
+        self._y = 0.0
         self._clicked = False
         self._click_count = 0
         self._home_pressed = False
@@ -234,29 +234,29 @@ class HIDJoystick:
             print(f"HID Joystick: Event #{self._debug_event_count} - type={event.type} (EV_REL={ecodes.EV_REL}, EV_KEY={ecodes.EV_KEY}) code={event.code} value={event.value}")
         
         if event.type == ecodes.EV_REL:
-            # Mouse relative movement
+            # Mouse relative movement (trackpad)
             if event.code == ecodes.REL_X:
-                # X movement - use value directly (it's already a delta)
-                dx = int(event.value * self.sensitivity)
-                if dx == 0 and event.value != 0:
-                    dx = 1 if event.value > 0 else -1
+                # X movement - accumulate even tiny movements
+                raw_dx = event.value * self.sensitivity
+                # Always accumulate, even if rounded to 0
                 with self._lock:
-                    self._x += dx
+                    self._x += raw_dx  # Accumulate as float first
                     if self._debug_event_count <= 20:
-                        print(f"HID Joystick: REL_X event: raw_value={event.value}, dx={dx}, total_x={self._x}")
-                    if dx != 0:
-                        self._notify_move()
+                        print(f"HID Joystick: REL_X event: raw_value={event.value}, sensitivity={self.sensitivity}, accumulated_x={self._x}")
+                # Notify immediately for trackpad (don't wait for accumulation)
+                if abs(raw_dx) > 0.1:  # Even tiny movements
+                    self._notify_move()
             elif event.code == ecodes.REL_Y:
-                # Y movement - use value directly (it's already a delta)
-                dy = int(event.value * self.sensitivity)
-                if dy == 0 and event.value != 0:
-                    dy = 1 if event.value > 0 else -1
+                # Y movement - accumulate even tiny movements
+                raw_dy = event.value * self.sensitivity
+                # Always accumulate, even if rounded to 0
                 with self._lock:
-                    self._y += dy
+                    self._y += raw_dy  # Accumulate as float first
                     if self._debug_event_count <= 20:
-                        print(f"HID Joystick: REL_Y event: raw_value={event.value}, dy={dy}, total_y={self._y}")
-                    if dy != 0:
-                        self._notify_move()
+                        print(f"HID Joystick: REL_Y event: raw_value={event.value}, sensitivity={self.sensitivity}, accumulated_y={self._y}")
+                # Notify immediately for trackpad (don't wait for accumulation)
+                if abs(raw_dy) > 0.1:  # Even tiny movements
+                    self._notify_move()
         
         elif event.type == ecodes.EV_KEY:
             # Button/key press/release
@@ -282,6 +282,30 @@ class HIDJoystick:
                         self._notify_key_esc()
                     elif not pressed:
                         self._home_pressed = False
+            elif event.code in (ecodes.KEY_UP, ecodes.KEY_DOWN, ecodes.KEY_LEFT, ecodes.KEY_RIGHT):
+                # Arrow keys - convert to cursor movement AND send as key event
+                if pressed:
+                    # Convert arrow keys to cursor movement
+                    dx, dy = 0, 0
+                    if event.code == ecodes.KEY_LEFT:
+                        dx = -5  # Move cursor left
+                    elif event.code == ecodes.KEY_RIGHT:
+                        dx = 5   # Move cursor right
+                    elif event.code == ecodes.KEY_UP:
+                        dy = -5  # Move cursor up
+                    elif event.code == ecodes.KEY_DOWN:
+                        dy = 5   # Move cursor down
+                    
+                    # Send cursor movement
+                    if dx != 0 or dy != 0:
+                        for cb in self._move_callbacks:
+                            try:
+                                cb(dx, dy)
+                            except Exception as e:
+                                print(f"HID joystick arrow key move callback error: {e}")
+                    
+                    # Also send as keyboard event (for text input, OSK navigation, etc.)
+                    self._notify_keyboard_key(event.code)
             else:
                 # Handle other keyboard keys (from USB keyboard)
                 # Convert evdev key codes to our KeyEvent format
@@ -292,10 +316,12 @@ class HIDJoystick:
         """Notify move callbacks with current delta movement."""
         # Get current accumulated values and reset them
         with self._lock:
-            dx = self._x
-            dy = self._y
-            self._x = 0
-            self._y = 0
+            dx = int(self._x)  # Convert accumulated float to int
+            dy = int(self._y)
+            # Only reset if we're actually sending movement
+            if dx != 0 or dy != 0:
+                self._x = 0
+                self._y = 0
         
         # Call callbacks with the delta values (not accumulated)
         if dx != 0 or dy != 0:
@@ -384,9 +410,9 @@ class HIDJoystick:
     def get_delta(self) -> tuple[int, int]:
         """Get and reset accumulated movement."""
         with self._lock:
-            dx, dy = self._x, self._y
-            self._x = 0
-            self._y = 0
+            dx, dy = int(self._x), int(self._y)
+            self._x = 0.0
+            self._y = 0.0
             return dx, dy
     
     def is_clicked(self) -> bool:
@@ -396,8 +422,8 @@ class HIDJoystick:
     def reset(self):
         """Reset accumulated movement."""
         with self._lock:
-            self._x = 0
-            self._y = 0
+            self._x = 0.0
+            self._y = 0.0
     
     def shutdown(self):
         """Clean up."""
