@@ -536,6 +536,16 @@ class UI:
         
         # Poll keyboard
         self.cardkb.poll()
+        
+        # Poll HID joystick for movement (in case callbacks aren't working)
+        if hasattr(self, 'hid_joystick') and self.hid_joystick and self.hid_joystick.enabled:
+            dx, dy = self.hid_joystick.get_delta()
+            if dx != 0 or dy != 0:
+                self.cursor_x = max(0, min(self.display.width - 1, self.cursor_x + dx))
+                self.cursor_y = max(self.STATUS_BAR_HEIGHT, 
+                                   min(self.display.height - 1, self.cursor_y + dy))
+                if self.current_app:
+                    self.current_app.on_cursor_move(self.cursor_x, self.cursor_y)
     
     def draw(self):
         """Draw the entire UI."""

@@ -184,18 +184,18 @@ class HIDJoystick:
                 dx = int(event.value * self.sensitivity)
                 with self._lock:
                     self._x += dx
+                    if self._debug_event_count <= 10:
+                        print(f"HID Joystick: X movement event: value={event.value}, dx={dx}, accumulated x={self._x}")
                     if dx != 0:
-                        if self._debug_event_count <= 10:
-                            print(f"HID Joystick: X movement: {dx}")
                         self._notify_move()
             elif event.code == ecodes.REL_Y:
                 # Y movement
                 dy = int(event.value * self.sensitivity)
                 with self._lock:
                     self._y += dy
+                    if self._debug_event_count <= 10:
+                        print(f"HID Joystick: Y movement event: value={event.value}, dy={dy}, accumulated y={self._y}")
                     if dy != 0:
-                        if self._debug_event_count <= 10:
-                            print(f"HID Joystick: Y movement: {dy}")
                         self._notify_move()
         
         elif event.type == ecodes.EV_KEY:
