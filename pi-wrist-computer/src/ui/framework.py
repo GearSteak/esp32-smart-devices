@@ -433,29 +433,20 @@ class UI:
     
     def _on_cursor_move(self, x: int, y: int):
         """Handle cursor movement from trackball or joystick."""
-        # Get movement from trackball
-        dx, dy = self.trackball.get_delta()
-        
-        # Add movement from USB joystick if available
-        if self.usb_joystick and self.usb_joystick.enabled:
-            jx, jy = self.usb_joystick.get_delta()
-            dx += jx
-            dy += jy
-        
-        # Add movement from HID joystick if available
-        if hasattr(self, 'hid_joystick') and self.hid_joystick and self.hid_joystick.enabled:
-            hx, hy = self.hid_joystick.get_delta()
-            dx += hx
-            dy += hy
+        # x, y are the movement deltas from the callback
+        # Use them directly instead of calling get_delta() which resets the values
+        dx = x
+        dy = y
         
         # Update cursor position
-        self.cursor_x = max(0, min(self.display.width - 1, self.cursor_x + dx))
-        self.cursor_y = max(self.STATUS_BAR_HEIGHT, 
-                           min(self.display.height - 1, self.cursor_y + dy))
-        
-        # Notify current app
-        if self.current_app:
-            self.current_app.on_cursor_move(self.cursor_x, self.cursor_y)
+        if dx != 0 or dy != 0:
+            self.cursor_x = max(0, min(self.display.width - 1, self.cursor_x + dx))
+            self.cursor_y = max(self.STATUS_BAR_HEIGHT, 
+                               min(self.display.height - 1, self.cursor_y + dy))
+            
+            # Notify current app
+            if self.current_app:
+                self.current_app.on_cursor_move(self.cursor_x, self.cursor_y)
     
     def _on_click(self, pressed: bool):
         """Handle trackball or USB joystick click."""

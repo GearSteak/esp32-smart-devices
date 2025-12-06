@@ -224,12 +224,21 @@ class HIDJoystick:
                         self._home_pressed = False
     
     def _notify_move(self):
-        """Notify move callbacks."""
-        for cb in self._move_callbacks:
-            try:
-                cb(self._x, self._y)
-            except Exception as e:
-                print(f"HID joystick move callback error: {e}")
+        """Notify move callbacks with current delta movement."""
+        # Get current accumulated values and reset them
+        with self._lock:
+            dx = self._x
+            dy = self._y
+            self._x = 0
+            self._y = 0
+        
+        # Call callbacks with the delta values (not accumulated)
+        if dx != 0 or dy != 0:
+            for cb in self._move_callbacks:
+                try:
+                    cb(dx, dy)
+                except Exception as e:
+                    print(f"HID joystick move callback error: {e}")
     
     def _notify_click(self, pressed: bool):
         """Notify click callbacks."""
