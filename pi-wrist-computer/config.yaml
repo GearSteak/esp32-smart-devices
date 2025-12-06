@@ -47,9 +47,16 @@ input:
   
   # USB Serial joystick from ESP32 controller (works alongside trackball)
   usb_joystick:
-    enabled: true  # Enable USB joystick input from ESP32 controller
+    enabled: false  # Disabled - using BLE instead
     port: null  # null = auto-detect, or specify like "/dev/ttyUSB0" or "/dev/ttyACM0"
     baudrate: 115200  # Serial baud rate
+    sensitivity: 2.0  # Movement multiplier (higher = faster)
+    auto_reconnect: true  # Auto-reconnect on disconnect
+  
+  # BLE joystick from ESP32 controller (preferred over USB)
+  ble_joystick:
+    enabled: true  # Enable BLE joystick input from ESP32 controller
+    device_name: "TransPartner"  # BLE device name to connect to
     sensitivity: 2.0  # Movement multiplier (higher = faster)
     auto_reconnect: true  # Auto-reconnect on disconnect
 

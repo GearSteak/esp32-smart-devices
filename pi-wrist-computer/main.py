@@ -22,6 +22,7 @@ from src.ui.framework import UI, Notification
 from src.input.cardkb import CardKB
 from src.input.trackball import Trackball
 from src.input.usb_joystick import USBJoystick
+from src.input.ble_joystick import BLEJoystick
 from src.services.gps import GPSService
 from src.services.battery import BatteryService
 
@@ -91,6 +92,9 @@ class PiWristComputer:
         print("Initializing USB joystick (ESP32 controller)...")
         self.usb_joystick = USBJoystick(self.config.get('input', {}).get('usb_joystick', {}))
         
+        print("Initializing BLE joystick (ESP32 controller)...")
+        self.ble_joystick = BLEJoystick(self.config.get('input', {}).get('ble_joystick', {}))
+        
         # Initialize UI
         print("Initializing UI framework...")
         ui_config = self.config.get('ui', {})
@@ -98,11 +102,14 @@ class PiWristComputer:
         battery_config = self.config.get('battery', {})
         ui_config['show_battery'] = battery_config.get('show_indicator', True)
         
+        # Use BLE joystick if enabled, otherwise USB joystick
+        joystick = self.ble_joystick if self.ble_joystick.enabled else self.usb_joystick
+        
         self.ui = UI(
             self.display, 
             self.cardkb, 
             self.trackball,
-            self.usb_joystick,
+            joystick,
             ui_config
         )
         

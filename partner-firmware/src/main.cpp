@@ -20,6 +20,31 @@
 // Include pin definitions from variant.h
 #include "variants/translator_partner/variant.h"
 
+// BLE support
+#ifdef USE_BLE_JOYSTICK
+#include <NimBLEDevice.h>
+#include <NimBLEServer.h>
+#include <NimBLECharacteristic.h>
+
+// BLE Service UUIDs (must match Pi side)
+#define REMOTE_INPUT_SERVICE_UUID "4f9a0001-8c3f-4a0e-89a7-6d277cf9a000"
+#define JOYSTICK_EVENT_CHAR_UUID  "4f9a0002-8c3f-4a0e-89a7-6d277cf9a000"
+
+static NimBLEServer* pServer = nullptr;
+static NimBLECharacteristic* pJoystickChar = nullptr;
+static bool deviceConnected = false;
+
+class ServerCallbacks: public NimBLEServerCallbacks {
+    void onConnect(NimBLEServer* pServer) {
+        deviceConnected = true;
+    }
+    void onDisconnect(NimBLEServer* pServer) {
+        deviceConnected = false;
+        NimBLEDevice::startAdvertising();
+    }
+};
+#endif
+
 // ADC calibration
 static esp_adc_cal_characteristics_t adc_chars;
 static bool adc_cal_done = false;
@@ -112,6 +137,39 @@ void setup() {
     // Flush serial buffer before starting binary data stream
     Serial.flush();
     delay(100);  // Give time for messages to be sent
+    
+#ifdef USE_BLE_JOYSTICK
+    // Initialize BLE
+    NimBLEDevice::init(BLE_NAME);
+    NimBLEDevice::setPower(ESP_PWR_LVL_P9);  // Max power for better range
+    
+    pServer = NimBLEDevice::createServer();
+    pServer->setCallbacks(new ServerCallbacks());
+    
+    // Create Remote Input Service
+    NimBLEService* pService = pServer->createService(REMOTE_INPUT_SERVICE_UUID);
+    
+    // Create Joystick Event Characteristic
+    pJoystickChar = pService->createCharacteristic(
+        JOYSTICK_EVENT_CHAR_UUID,
+        NIMBLE_PROPERTY::NOTIFY
+    );
+    
+    pService->start();
+    
+    // Start advertising
+    NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(REMOTE_INPUT_SERVICE_UUID);
+    pAdvertising->setScanResponse(true);
+    pAdvertising->setMinPreferred(0x06);  // helps with iPhone connections issue
+    pAdvertising->setMinPreferred(0x12);
+    NimBLEDevice::startAdvertising();
+    
+#ifdef DEBUG_JOYSTICK
+    Serial.println("BLE initialized and advertising as 'TransPartner'");
+    Serial.println("Connect from Pi using BLE joystick handler");
+#endif
+#endif
 }
 
 void loop() {
@@ -326,9 +384,17 @@ void loop() {
             lastDebugPrint = now;
         }
 #else
-        // Production mode: send binary joystick event packet (8 bytes)
+        // Production mode: send via BLE if enabled, otherwise USB Serial
+#ifdef USE_BLE_JOYSTICK
+        if (deviceConnected && pJoystickChar) {
+            pJoystickChar->setValue((uint8_t*)&evt, sizeof(JoystickEvent));
+            pJoystickChar->notify();
+        }
+#else
+        // USB Serial fallback
         Serial.write((uint8_t *)&evt, sizeof(JoystickEvent));
         Serial.flush();  // Ensure data is sent immediately
+#endif
 #endif
         
         if (stateChanged) {

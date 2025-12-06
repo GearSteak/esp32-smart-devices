@@ -11,38 +11,65 @@ import sys
 
 def find_esp32_port():
     """Find ESP32 USB serial port."""
+    print("Scanning for serial ports...")
+    ports = serial.tools.list_ports.comports()
+    
+    if not ports:
+        print("No serial ports found at all!")
+        return None
+    
+    print(f"\nFound {len(ports)} port(s):")
+    for port in ports:
+        print(f"  {port.device} - {port.description} - {port.hwid}")
+    
     esp32_identifiers = ['CP210', 'CH340', 'CH341', 'FT232', 'Silicon Labs', 'USB Serial']
     
-    ports = serial.tools.list_ports.comports()
     for port in ports:
         description = port.description.upper()
         for identifier in esp32_identifiers:
             if identifier.upper() in description:
-                print(f"Found ESP32 on {port.device}")
+                print(f"\n✓ Matched ESP32 identifier '{identifier}' on {port.device}")
                 return port.device
     
     # Fallback: try common ports
+    print("\nTrying common port names...")
     common_ports = ['/dev/ttyUSB0', '/dev/ttyACM0', '/dev/ttyUSB1', '/dev/ttyACM1']
     for port_name in common_ports:
         try:
             test_serial = serial.Serial(port_name, 115200, timeout=0.1)
             test_serial.close()
-            print(f"Found port {port_name}")
+            print(f"✓ Found accessible port {port_name}")
             return port_name
-        except:
-            pass
+        except Exception as e:
+            print(f"  {port_name}: {e}")
+    
+    # If we have any ports, ask user to pick one
+    if ports:
+        print(f"\nNo ESP32 auto-detected. Available ports:")
+        for i, port in enumerate(ports):
+            print(f"  [{i+1}] {port.device} - {port.description}")
+        print("\nYou can manually specify a port by editing the script or passing it as argument.")
+        # Return first port as fallback
+        print(f"Trying first port: {ports[0].device}")
+        return ports[0].device
     
     return None
 
-def test_joystick():
+def test_joystick(port_name=None):
     """Test receiving joystick packets."""
-    port = find_esp32_port()
+    if port_name:
+        print(f"Using manually specified port: {port_name}")
+        port = port_name
+    else:
+        port = find_esp32_port()
     
     if not port:
-        print("ERROR: No ESP32 device found!")
-        print("\nAvailable ports:")
-        for p in serial.tools.list_ports.comports():
-            print(f"  {p.device} - {p.description}")
+        print("\nERROR: No serial port found!")
+        print("\nTroubleshooting:")
+        print("1. Make sure ESP32 is connected via USB")
+        print("2. Check: sudo lsusb (should show ESP32)")
+        print("3. Check: ls -la /dev/ttyUSB* /dev/ttyACM*")
+        print("4. Try loading drivers: sudo modprobe usbserial cp210x ch341")
         return False
     
     print(f"\nConnecting to {port} at 115200 baud...")
@@ -116,6 +143,11 @@ if __name__ == "__main__":
     print("=" * 50)
     print()
     
-    success = test_joystick()
+    # Allow specifying port as command line argument
+    port_name = sys.argv[1] if len(sys.argv) > 1 else None
+    if port_name:
+        print(f"Using port from command line: {port_name}\n")
+    
+    success = test_joystick(port_name)
     sys.exit(0 if success else 1)
 
