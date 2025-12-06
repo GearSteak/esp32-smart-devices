@@ -68,41 +68,43 @@ class HIDJoystick:
             self._start_read_thread()
     
     def _find_joystick_device(self) -> Optional[str]:
-        """Auto-detect mouse/keyboard device (Arduino Pro Micro)."""
+        """Auto-detect mouse/keyboard device (Arduino Pro Micro or USB keyboard/trackpad)."""
         if not EVDEV_AVAILABLE:
             return None
         
-        # Try to find mouse device (Arduino Pro Micro will show up as mouse)
+        # Try to find device with both mouse and keyboard capabilities
         try:
             import glob
-            # Look for mouse devices
-            mouse_devices = glob.glob('/dev/input/event*')
-            for path in mouse_devices:
+            # Look for all input devices
+            all_devices = glob.glob('/dev/input/event*')
+            print(f"HID Joystick: Scanning {len(all_devices)} input devices...")
+            
+            for path in sorted(all_devices):
                 try:
                     device = InputDevice(path)
-                    # Check if it has mouse capabilities
-                    if ecodes.EV_REL in device.capabilities() and ecodes.EV_KEY in device.capabilities():
-                        # Check if it's likely our Arduino (has mouse buttons and relative movement)
-                        caps = device.capabilities()
-                        if ecodes.BTN_LEFT in caps.get(ecodes.EV_KEY, []):
-                            print(f"HID Joystick: Found mouse device at {path}")
+                    caps = device.capabilities()
+                    
+                    # Check if it has both mouse (REL) and keyboard (KEY) capabilities
+                    has_mouse = ecodes.EV_REL in caps
+                    has_keyboard = ecodes.EV_KEY in caps
+                    
+                    if has_mouse and has_keyboard:
+                        # Check for mouse buttons (BTN_LEFT) and keyboard keys
+                        key_caps = caps.get(ecodes.EV_KEY, [])
+                        has_mouse_btn = ecodes.BTN_LEFT in key_caps or ecodes.BTN_MOUSE in key_caps
+                        has_keys = ecodes.KEY_A in key_caps or ecodes.KEY_ESC in key_caps
+                        
+                        if has_mouse_btn and has_keys:
+                            print(f"HID Joystick: Found keyboard+mouse device: {device.name} at {path}")
                             return path
-                except:
-                    pass
-        except:
-            pass
+                except Exception as e:
+                    if "Permission denied" not in str(e):
+                        pass  # Skip devices we can't read
         
-        # Fallback: try common mouse paths
-        common_paths = ['/dev/input/mouse0', '/dev/input/mice']
-        for path in common_paths:
-            try:
-                device = InputDevice(path)
-                print(f"HID Joystick: Found mouse at {path}")
-                return path
-            except:
-                pass
+        except Exception as e:
+            print(f"HID Joystick: Error scanning devices: {e}")
         
-        print("HID Joystick: No mouse device found")
+        print("HID Joystick: No keyboard+mouse device found")
         return None
     
     def _start_read_thread(self):
@@ -240,6 +242,11 @@ class HIDJoystick:
                         self._notify_key_esc()
                     elif not pressed:
                         self._home_pressed = False
+            else:
+                # Handle other keyboard keys (from USB keyboard)
+                # Convert evdev key codes to our KeyEvent format
+                if pressed:
+                    self._notify_keyboard_key(event.code)
     
     def _notify_move(self):
         """Notify move callbacks with current delta movement."""
@@ -276,6 +283,45 @@ class HIDJoystick:
             is_special=True,
             timestamp=time.time()
         )
+        for cb in self._key_callbacks:
+            try:
+                cb(event)
+            except Exception as e:
+                print(f"HID joystick key callback error: {e}")
+    
+    def _notify_keyboard_key(self, key_code):
+        """Notify key callbacks with keyboard key event."""
+        from ..input.cardkb import KeyEvent, KeyCode
+        import time
+        
+        # Map evdev key codes to our KeyCode enum
+        key_map = {
+            ecodes.KEY_ESC: KeyCode.ESC,
+            ecodes.KEY_ENTER: KeyCode.ENTER,
+            ecodes.KEY_BACKSPACE: KeyCode.BACKSPACE,
+            ecodes.KEY_TAB: KeyCode.TAB,
+            ecodes.KEY_SPACE: KeyCode.SPACE,
+            ecodes.KEY_DELETE: KeyCode.DEL,
+            ecodes.KEY_UP: KeyCode.UP,
+            ecodes.KEY_DOWN: KeyCode.DOWN,
+            ecodes.KEY_LEFT: KeyCode.LEFT,
+            ecodes.KEY_RIGHT: KeyCode.RIGHT,
+        }
+        
+        # Get mapped code or use raw code
+        mapped_code = key_map.get(key_code, key_code)
+        
+        # Determine if special key
+        is_special = mapped_code < 0x20 or mapped_code >= 0x80
+        char = '' if is_special else (chr(mapped_code) if 0x20 <= mapped_code < 0x7F else '')
+        
+        event = KeyEvent(
+            code=mapped_code,
+            char=char,
+            is_special=is_special,
+            timestamp=time.time()
+        )
+        
         for cb in self._key_callbacks:
             try:
                 cb(event)
