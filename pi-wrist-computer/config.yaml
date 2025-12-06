@@ -47,7 +47,7 @@ input:
   
   # USB Serial joystick from ESP32 controller (works alongside trackball)
   usb_joystick:
-    enabled: true  # Enable USB joystick input from ESP32 controller
+    enabled: false  # Disabled - using HID joystick (Arduino Pro Micro) instead
     port: null  # null = auto-detect, or specify like "/dev/ttyUSB0" or "/dev/ttyACM0"
     baudrate: 115200  # Serial baud rate
     sensitivity: 2.0  # Movement multiplier (higher = faster)
