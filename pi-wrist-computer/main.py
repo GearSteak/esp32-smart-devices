@@ -23,6 +23,7 @@ from src.input.cardkb import CardKB
 from src.input.trackball import Trackball
 from src.input.usb_joystick import USBJoystick
 from src.input.ble_joystick import BLEJoystick
+from src.input.hid_joystick import HIDJoystick
 from src.services.gps import GPSService
 from src.services.battery import BatteryService
 
@@ -112,6 +113,9 @@ class PiWristComputer:
         print("Initializing BLE joystick (ESP32 controller)...")
         self.ble_joystick = BLEJoystick(self.config.get('input', {}).get('ble_joystick', {}))
         
+        print("Initializing HID joystick (Arduino Pro Micro)...")
+        self.hid_joystick = HIDJoystick(self.config.get('input', {}).get('hid_joystick', {}))
+        
         # Initialize UI
         print("Initializing UI framework...")
         ui_config = self.config.get('ui', {})
@@ -119,8 +123,13 @@ class PiWristComputer:
         battery_config = self.config.get('battery', {})
         ui_config['show_battery'] = battery_config.get('show_indicator', True)
         
-        # Use BLE joystick if enabled, otherwise USB joystick
-        joystick = self.ble_joystick if self.ble_joystick.enabled else self.usb_joystick
+        # Choose joystick: HID > BLE > USB
+        if self.hid_joystick.enabled:
+            joystick = self.hid_joystick
+        elif self.ble_joystick.enabled:
+            joystick = self.ble_joystick
+        else:
+            joystick = self.usb_joystick
         
         self.ui = UI(
             self.display, 

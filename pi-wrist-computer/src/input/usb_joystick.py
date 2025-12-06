@@ -74,10 +74,15 @@ class USBJoystick:
             'FT232',  # FTDI FT232
             'Silicon Labs',  # CP210x
             'USB Serial',  # Generic
+            'USB2.0',  # Some CH340 chips
+            'Serial',  # Generic serial
         ]
         
+        # List all available ports for debugging
         ports = serial.tools.list_ports.comports()
+        print(f"USB Joystick: Scanning {len(ports)} serial ports...")
         for port in ports:
+            print(f"  Found: {port.device} - {port.description} (VID:{port.vid:04X} PID:{port.pid:04X})")
             description = port.description.upper()
             for identifier in esp32_identifiers:
                 if identifier.upper() in description:
@@ -85,6 +90,7 @@ class USBJoystick:
                     return port.device
         
         # Fallback: try common port names
+        print("USB Joystick: Trying common port names...")
         common_ports = ['/dev/ttyUSB0', '/dev/ttyACM0', '/dev/ttyUSB1', '/dev/ttyACM1']
         for port_name in common_ports:
             try:
@@ -92,9 +98,10 @@ class USBJoystick:
                 test_serial.close()
                 print(f"USB Joystick: Using port {port_name}")
                 return port_name
-            except:
-                pass
+            except Exception as e:
+                print(f"  {port_name}: {e}")
         
+        print("USB Joystick: No ESP32 device found")
         return None
     
     def _start_serial_thread(self):

@@ -59,6 +59,13 @@ input:
     device_name: "TransPartner"  # BLE device name to connect to
     sensitivity: 2.0  # Movement multiplier (higher = faster)
     auto_reconnect: true  # Auto-reconnect on disconnect
+  
+  # USB HID joystick (Arduino Pro Micro - no drivers needed!)
+  hid_joystick:
+    enabled: true  # Enable USB HID joystick
+    device_path: null  # null = auto-detect (/dev/input/js0), or specify path
+    sensitivity: 2.0  # Movement multiplier (higher = faster)
+    auto_reconnect: true  # Auto-reconnect on disconnect
 
 gps:
   enabled: true

@@ -153,10 +153,14 @@ class BLEJoystick:
             services = loop.run_until_complete(self._client.get_services())
             
             # Find joystick characteristic
+            print(f"BLE joystick: Discovering services (found {len(services)} services)...")
             for service in services:
-                if service.uuid.lower() == REMOTE_INPUT_SERVICE_UUID.lower():
+                print(f"  Service UUID: {service.uuid}")
+                if service.uuid.lower() == self.REMOTE_INPUT_SERVICE_UUID.lower():
+                    print(f"  Found remote input service!")
                     for char in service.characteristics:
-                        if char.uuid.lower() == JOYSTICK_EVENT_CHAR_UUID.lower():
+                        print(f"    Characteristic UUID: {char.uuid}")
+                        if char.uuid.lower() == self.JOYSTICK_EVENT_CHAR_UUID.lower():
                             self._joystick_char = char
                             # Subscribe to notifications
                             loop.run_until_complete(
@@ -167,8 +171,8 @@ class BLEJoystick:
                             self._loop = loop
                             self._connecting = False
                             return
-            
-            print("BLE joystick: Joystick service/characteristic not found")
+                    print(f"  Joystick characteristic not found in service")
+            print("BLE joystick: Remote input service not found")
             loop.run_until_complete(self._client.disconnect())
             self._connected = False
             
@@ -182,10 +186,16 @@ class BLEJoystick:
     
     async def _scan_for_device(self, timeout=10.0):
         """Scan for ESP32 device."""
+        print(f"BLE joystick: Starting scan (timeout={timeout}s)...")
         devices = await BleakScanner.discover(timeout=timeout)
+        print(f"BLE joystick: Found {len(devices)} BLE devices:")
         for device in devices:
+            name = device.name if device.name else "(no name)"
+            print(f"  - {name} ({device.address})")
             if device.name and self.device_name.lower() in device.name.lower():
+                print(f"BLE joystick: MATCH! Found {self.device_name}")
                 return device
+        print(f"BLE joystick: {self.device_name} not found in scan results")
         return None
     
     def _notification_handler(self, sender, data: bytearray):
