@@ -123,11 +123,16 @@ class HIDJoystick:
                 
                 if self._connected and self._device:
                     try:
-                        # Read events (non-blocking)
+                        # Read events (blocking, but that's okay in a thread)
+                        # Use read_loop() which handles blocking reads
                         for event in self._device.read_loop():
                             if self._stop_event.is_set():
                                 break
                             self._handle_event(event)
+                    except PermissionError:
+                        print("HID Joystick: Permission denied - need root or input group")
+                        self._connected = False
+                        break
                     except OSError:
                         print("HID Joystick: Device disconnected")
                         self._connected = False
@@ -159,11 +164,18 @@ class HIDJoystick:
             
             # Open device and grab it exclusively (so terminal doesn't consume events)
             self._device = InputDevice(path)
-            self._device.grab()  # Grab device exclusively - prevents terminal from consuming events
+            try:
+                self._device.grab()  # Grab device exclusively - prevents terminal from consuming events
+                print(f"HID Joystick: Device grabbed exclusively")
+            except PermissionError:
+                print(f"HID Joystick: WARNING: Could not grab device - need root or input group membership")
+                print(f"HID Joystick: Run: sudo usermod -a -G input $USER (then log out/in)")
+            except Exception as e:
+                print(f"HID Joystick: WARNING: Could not grab device: {e}")
+            
             print(f"HID Joystick: Connected to {path}")
             print(f"HID Joystick: Device name: {self._device.name}")
             print(f"HID Joystick: Device capabilities: {list(self._device.capabilities().keys())}")
-            print(f"HID Joystick: Device grabbed exclusively")
             self._connected = True
             
         except Exception as e:
