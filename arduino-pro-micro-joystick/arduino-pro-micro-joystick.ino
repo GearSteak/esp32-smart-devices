@@ -20,10 +20,10 @@ int x_center = 512;
 int y_center = 512;
 
 // Deadzone
-#define DEADZONE 20  // Reduced deadzone
+#define DEADZONE 10  // Very small deadzone
 
 // Movement settings
-#define MOUSE_SPEED 10  // Pixels per movement (increased)
+#define MOUSE_SPEED 20  // Pixels per movement (increased more)
 #define MOVEMENT_THRESHOLD 1  // Minimum movement to trigger (reduced)
 
 // State

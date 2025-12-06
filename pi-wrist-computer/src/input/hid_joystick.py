@@ -174,27 +174,31 @@ class HIDJoystick:
         if not hasattr(self, '_debug_event_count'):
             self._debug_event_count = 0
         self._debug_event_count += 1
-        if self._debug_event_count <= 10:
-            print(f"HID Joystick: Event #{self._debug_event_count} - type={event.type} code={event.code} value={event.value}")
+        if self._debug_event_count <= 20:
+            print(f"HID Joystick: Event #{self._debug_event_count} - type={event.type} (EV_REL={ecodes.EV_REL}, EV_KEY={ecodes.EV_KEY}) code={event.code} value={event.value}")
         
         if event.type == ecodes.EV_REL:
             # Mouse relative movement
             if event.code == ecodes.REL_X:
-                # X movement
+                # X movement - use value directly (it's already a delta)
                 dx = int(event.value * self.sensitivity)
+                if dx == 0 and event.value != 0:
+                    dx = 1 if event.value > 0 else -1
                 with self._lock:
                     self._x += dx
-                    if self._debug_event_count <= 10:
-                        print(f"HID Joystick: X movement event: value={event.value}, dx={dx}, accumulated x={self._x}")
+                    if self._debug_event_count <= 20:
+                        print(f"HID Joystick: REL_X event: raw_value={event.value}, dx={dx}, total_x={self._x}")
                     if dx != 0:
                         self._notify_move()
             elif event.code == ecodes.REL_Y:
-                # Y movement
+                # Y movement - use value directly (it's already a delta)
                 dy = int(event.value * self.sensitivity)
+                if dy == 0 and event.value != 0:
+                    dy = 1 if event.value > 0 else -1
                 with self._lock:
                     self._y += dy
-                    if self._debug_event_count <= 10:
-                        print(f"HID Joystick: Y movement event: value={event.value}, dy={dy}, accumulated y={self._y}")
+                    if self._debug_event_count <= 20:
+                        print(f"HID Joystick: REL_Y event: raw_value={event.value}, dy={dy}, total_y={self._y}")
                     if dy != 0:
                         self._notify_move()
         
