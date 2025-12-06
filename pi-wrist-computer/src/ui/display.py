@@ -58,14 +58,18 @@ class Display:
         self._initialized = False
         
         # Setup GPIO using centralized manager
+        # Note: Don't set up backlight as regular output - PWM will handle it
         gpio.setup_output(self.gpio_dc)
         gpio.setup_output(self.gpio_rst)
-        gpio.setup_output(self.gpio_bl)
         
-        # Backlight PWM
+        # Backlight PWM (this will set up the pin as output internally)
         self._pwm = gpio.setup_pwm(self.gpio_bl, 1000)
         if self._pwm:
             self._pwm.start(self.brightness)
+        else:
+            # Fallback: if PWM fails, try regular output
+            gpio.setup_output(self.gpio_bl)
+            gpio.output(self.gpio_bl, True)  # Turn on backlight
         
         # Setup SPI
         self._spi = spidev.SpiDev()

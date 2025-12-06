@@ -79,12 +79,19 @@ class PiWristComputer:
         # Load configuration
         self.config = self._load_config(config_path)
         
-        # Check GPIO availability first
+        # Check GPIO availability first and force cleanup any previous state
         from src.utils.gpio_manager import gpio
         if not gpio.available:
             print("WARNING: GPIO not available. Display may not work correctly.")
             print("Make sure you're running on a Raspberry Pi with RPi.GPIO installed.")
         else:
+            # Force cleanup any previous GPIO state (in case previous run didn't exit cleanly)
+            try:
+                import RPi.GPIO as GPIO
+                GPIO.cleanup()
+            except:
+                pass
+            
             # Try to initialize GPIO early
             if not gpio.initialize():
                 print("WARNING: GPIO initialization failed. Display may not work correctly.")

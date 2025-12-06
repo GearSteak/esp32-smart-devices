@@ -5,6 +5,7 @@ Prevents conflicts from multiple modules calling GPIO.setmode().
 """
 
 import threading
+import time
 
 # Try to import GPIO, but allow running without it (for testing)
 try:
@@ -247,12 +248,73 @@ class GPIOManager:
         if not GPIO_AVAILABLE:
             return None
         
-        try:
-            self.setup_output(pin)
-            return GPIO.PWM(pin, frequency)
-        except Exception as e:
-            print(f"GPIO PWM setup pin {pin} failed: {e}")
+        if not self.initialize():
             return None
+        
+        with self._lock:
+            try:
+                # For PWM, we need to set up the pin fresh
+                # Remove from allocated if it was set up as regular output
+                if pin in self._allocated_pins:
+                    # Try to clean up the pin first
+                    try:
+                        GPIO.cleanup(pin)
+                    except:
+                        pass
+                    self._allocated_pins.discard(pin)
+                
+                # Set up as output first
+                GPIO.setup(pin, GPIO.OUT)
+                self._allocated_pins.add(pin)
+                
+                # Create PWM
+                pwm = GPIO.PWM(pin, frequency)
+                self._error_printed.discard(f"pin_{pin}_error")
+                return pwm
+            except RuntimeError as e:
+                error_str = str(e).lower()
+                if "not allocated" in error_str or "not set" in error_str:
+                    # Re-initialize and try again
+                    try:
+                        self._initialized = False
+                        GPIO.cleanup()
+                        GPIO.setmode(GPIO.BCM)
+                        GPIO.setwarnings(False)
+                        self._initialized = True
+                        GPIO.setup(pin, GPIO.OUT)
+                        self._allocated_pins.add(pin)
+                        pwm = GPIO.PWM(pin, frequency)
+                        self._error_printed.discard(f"pin_{pin}_error")
+                        return pwm
+                    except Exception as e2:
+                        if f"pin_{pin}_error" not in self._error_printed:
+                            print(f"GPIO PWM setup pin {pin} failed after re-init: {e2}")
+                            self._error_printed.add(f"pin_{pin}_error")
+                        return None
+                elif "busy" in error_str or "in use" in error_str:
+                    # Pin is busy - try to force cleanup
+                    try:
+                        GPIO.cleanup(pin)
+                        time.sleep(0.1)  # Brief delay
+                        GPIO.setup(pin, GPIO.OUT)
+                        self._allocated_pins.add(pin)
+                        pwm = GPIO.PWM(pin, frequency)
+                        self._error_printed.discard(f"pin_{pin}_error")
+                        return pwm
+                    except Exception as e2:
+                        if f"pin_{pin}_error" not in self._error_printed:
+                            print(f"GPIO PWM setup pin {pin} failed (busy): {e2}")
+                            self._error_printed.add(f"pin_{pin}_error")
+                        return None
+                if f"pin_{pin}_error" not in self._error_printed:
+                    print(f"GPIO PWM setup pin {pin} failed: {e}")
+                    self._error_printed.add(f"pin_{pin}_error")
+                return None
+            except Exception as e:
+                if f"pin_{pin}_error" not in self._error_printed:
+                    print(f"GPIO PWM setup pin {pin} failed: {e}")
+                    self._error_printed.add(f"pin_{pin}_error")
+                return None
     
     def cleanup(self, pins: list = None):
         """Clean up GPIO pins."""
