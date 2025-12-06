@@ -157,11 +157,13 @@ class HIDJoystick:
             if not path:
                 return
             
-            # Open device
+            # Open device and grab it exclusively (so terminal doesn't consume events)
             self._device = InputDevice(path)
+            self._device.grab()  # Grab device exclusively - prevents terminal from consuming events
             print(f"HID Joystick: Connected to {path}")
             print(f"HID Joystick: Device name: {self._device.name}")
             print(f"HID Joystick: Device capabilities: {list(self._device.capabilities().keys())}")
+            print(f"HID Joystick: Device grabbed exclusively")
             self._connected = True
             
         except Exception as e:
@@ -304,6 +306,7 @@ class HIDJoystick:
         self._stop_event.set()
         if self._device:
             try:
+                self._device.ungrab()  # Release device
                 self._device.close()
             except:
                 pass
