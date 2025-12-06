@@ -20,11 +20,11 @@ int x_center = 512;
 int y_center = 512;
 
 // Deadzone
-#define DEADZONE 50
+#define DEADZONE 20  // Reduced deadzone
 
 // Movement settings
-#define MOUSE_SPEED 5  // Pixels per movement
-#define MOVEMENT_THRESHOLD 3  // Minimum movement to trigger
+#define MOUSE_SPEED 10  // Pixels per movement (increased)
+#define MOVEMENT_THRESHOLD 1  // Minimum movement to trigger (reduced)
 
 // State
 int last_x = 0;
@@ -60,15 +60,23 @@ void loop() {
   if (abs(x_val) < DEADZONE) x_val = 0;
   if (abs(y_val) < DEADZONE) y_val = 0;
   
-  // Convert to mouse movement
-  int dx = x_val * MOUSE_SPEED / 127;
-  int dy = y_val * MOUSE_SPEED / 127;
+  // Convert to mouse movement (scale properly)
+  int dx = 0;
+  int dy = 0;
   
-  // Only move if change is significant
-  if (abs(dx) >= MOVEMENT_THRESHOLD || abs(dy) >= MOVEMENT_THRESHOLD) {
+  if (x_val != 0) {
+    dx = (x_val * MOUSE_SPEED) / 127;
+    if (dx == 0 && x_val != 0) dx = (x_val > 0) ? 1 : -1;  // Ensure at least 1 pixel movement
+  }
+  
+  if (y_val != 0) {
+    dy = (y_val * MOUSE_SPEED) / 127;
+    if (dy == 0 && y_val != 0) dy = (y_val > 0) ? 1 : -1;  // Ensure at least 1 pixel movement
+  }
+  
+  // Move mouse if there's any movement
+  if (dx != 0 || dy != 0) {
     Mouse.move(dx, -dy, 0);  // Negative Y because screen coordinates
-    last_x = dx;
-    last_y = dy;
   }
   
   // Read buttons
@@ -111,4 +119,8 @@ void calibrate() {
   
   x_center = x_sum / samples;
   y_center = y_sum / samples;
+  
+  // Debug: if center is way off, use default
+  if (x_center < 100 || x_center > 900) x_center = 512;
+  if (y_center < 100 || y_center > 900) y_center = 512;
 }

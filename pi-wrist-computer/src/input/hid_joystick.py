@@ -160,6 +160,8 @@ class HIDJoystick:
             # Open device
             self._device = InputDevice(path)
             print(f"HID Joystick: Connected to {path}")
+            print(f"HID Joystick: Device name: {self._device.name}")
+            print(f"HID Joystick: Device capabilities: {list(self._device.capabilities().keys())}")
             self._connected = True
             
         except Exception as e:
@@ -168,6 +170,13 @@ class HIDJoystick:
     
     def _handle_event(self, event):
         """Handle input event from mouse/keyboard."""
+        # Debug: print first few events to verify reception
+        if not hasattr(self, '_debug_event_count'):
+            self._debug_event_count = 0
+        self._debug_event_count += 1
+        if self._debug_event_count <= 10:
+            print(f"HID Joystick: Event #{self._debug_event_count} - type={event.type} code={event.code} value={event.value}")
+        
         if event.type == ecodes.EV_REL:
             # Mouse relative movement
             if event.code == ecodes.REL_X:
@@ -176,6 +185,8 @@ class HIDJoystick:
                 with self._lock:
                     self._x += dx
                     if dx != 0:
+                        if self._debug_event_count <= 10:
+                            print(f"HID Joystick: X movement: {dx}")
                         self._notify_move()
             elif event.code == ecodes.REL_Y:
                 # Y movement
@@ -183,6 +194,8 @@ class HIDJoystick:
                 with self._lock:
                     self._y += dy
                     if dy != 0:
+                        if self._debug_event_count <= 10:
+                            print(f"HID Joystick: Y movement: {dy}")
                         self._notify_move()
         
         elif event.type == ecodes.EV_KEY:
