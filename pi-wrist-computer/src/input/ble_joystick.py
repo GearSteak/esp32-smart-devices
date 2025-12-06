@@ -12,11 +12,12 @@ from typing import Callable, Optional
 from dataclasses import dataclass
 
 try:
-    import bluetooth
+    from bleak import BleakScanner, BleakClient
     BLE_AVAILABLE = True
 except ImportError:
     BLE_AVAILABLE = False
-    bluetooth = None
+    BleakScanner = None
+    BleakClient = None
 
 
 @dataclass
@@ -78,6 +79,9 @@ class BLEJoystick:
         self._connecting = False
         self._ble_thread = None
         self._stop_event = threading.Event()
+        self._client = None
+        self._joystick_char = None
+        self._loop = None
         
         if self.enabled:
             self._start_ble_thread()
@@ -98,10 +102,15 @@ class BLEJoystick:
                 if not self._connected and not self._connecting:
                     self._connect()
                 
-                if self._connected:
-                    # Process BLE events (would need actual BLE implementation)
-                    # For now, simulate connection
-                    time.sleep(0.1)
+                if self._connected and self._client:
+                    # Check if still connected
+                    if not self._client.is_connected:
+                        print("BLE joystick: Disconnected")
+                        self._connected = False
+                        if self.auto_reconnect:
+                            time.sleep(2)  # Wait before reconnect
+                    else:
+                        time.sleep(0.1)  # Small delay
                 else:
                     time.sleep(1)  # Wait before retry
                     
@@ -115,28 +124,74 @@ class BLEJoystick:
     def _connect(self):
         """Connect to ESP32 controller via BLE."""
         if not BLE_AVAILABLE:
-            print("BLE not available - install bluez or pybluez")
+            print("BLE not available - install bleak: pip3 install bleak")
             return
         
         self._connecting = True
         try:
-            # TODO: Implement actual BLE connection
-            # This would use bluez/pybluez to:
-            # 1. Scan for device with name "TransPartner"
-            # 2. Connect to it
-            # 3. Discover services and characteristics
-            # 4. Subscribe to JoystickEvent notifications
-            # 5. Parse incoming 8-byte joystick events
+            print(f"BLE joystick: Scanning for {self.device_name}...")
             
-            print(f"BLE joystick: Looking for {self.device_name}...")
-            # Placeholder - actual implementation would go here
-            # self._connected = True
+            # Scan for device
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            device = loop.run_until_complete(self._scan_for_device())
+            
+            if not device:
+                print(f"BLE joystick: Device '{self.device_name}' not found")
+                self._connecting = False
+                return
+            
+            print(f"BLE joystick: Found {self.device_name} at {device.address}")
+            
+            # Connect to device
+            self._client = BleakClient(device.address, loop=loop)
+            loop.run_until_complete(self._client.connect())
+            
+            # Discover services
+            services = loop.run_until_complete(self._client.get_services())
+            
+            # Find joystick characteristic
+            for service in services:
+                if service.uuid.lower() == REMOTE_INPUT_SERVICE_UUID.lower():
+                    for char in service.characteristics:
+                        if char.uuid.lower() == JOYSTICK_EVENT_CHAR_UUID.lower():
+                            self._joystick_char = char
+                            # Subscribe to notifications
+                            loop.run_until_complete(
+                                self._client.start_notify(char.uuid, self._notification_handler)
+                            )
+                            print("BLE joystick: Connected and subscribed to joystick events")
+                            self._connected = True
+                            self._loop = loop
+                            self._connecting = False
+                            return
+            
+            print("BLE joystick: Joystick service/characteristic not found")
+            loop.run_until_complete(self._client.disconnect())
+            self._connected = False
             
         except Exception as e:
             print(f"BLE joystick connection failed: {e}")
+            import traceback
+            traceback.print_exc()
             self._connected = False
         finally:
             self._connecting = False
+    
+    async def _scan_for_device(self, timeout=10.0):
+        """Scan for ESP32 device."""
+        devices = await BleakScanner.discover(timeout=timeout)
+        for device in devices:
+            if device.name and self.device_name.lower() in device.name.lower():
+                return device
+        return None
+    
+    def _notification_handler(self, sender, data: bytearray):
+        """Handle BLE notification (joystick event)."""
+        if len(data) >= 8:
+            self._on_joystick_event(bytes(data))
     
     def _on_joystick_event(self, data: bytes):
         """
@@ -228,6 +283,12 @@ class BLEJoystick:
     def shutdown(self):
         """Clean up BLE connection."""
         self._stop_event.set()
+        if self._client and self._connected:
+            try:
+                if self._loop and not self._loop.is_closed():
+                    self._loop.run_until_complete(self._client.disconnect())
+            except:
+                pass
         if self._ble_thread:
             self._ble_thread.join(timeout=2)
         self._connected = False

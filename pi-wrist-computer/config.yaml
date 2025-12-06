@@ -4,7 +4,7 @@ display:
   type: st7789v
   width: 240
   height: 320
-  rotation: 0  # 0, 90, 180, 270
+  rotation: 270  # 0, 90, 180, 270
   # SPI pins (directly wired):
   #   DIN → GPIO 10 (MOSI)
   #   CLK → GPIO 11 (SCLK)
@@ -47,7 +47,7 @@ input:
   
   # USB Serial joystick from ESP32 controller (works alongside trackball)
   usb_joystick:
-    enabled: false  # Disabled - using BLE instead
+    enabled: true  # Enable USB joystick input from ESP32 controller
     port: null  # null = auto-detect, or specify like "/dev/ttyUSB0" or "/dev/ttyACM0"
     baudrate: 115200  # Serial baud rate
     sensitivity: 2.0  # Movement multiplier (higher = faster)
@@ -55,7 +55,7 @@ input:
   
   # BLE joystick from ESP32 controller (preferred over USB)
   ble_joystick:
-    enabled: true  # Enable BLE joystick input from ESP32 controller
+    enabled: false  # Disabled - using USB Serial instead
     device_name: "TransPartner"  # BLE device name to connect to
     sensitivity: 2.0  # Movement multiplier (higher = faster)
     auto_reconnect: true  # Auto-reconnect on disconnect

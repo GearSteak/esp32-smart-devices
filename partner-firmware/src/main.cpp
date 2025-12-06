@@ -360,6 +360,7 @@ void loop() {
     bool stateChanged = (evt.x != lastState.x || evt.y != lastState.y || evt.buttons != lastState.buttons);
     bool periodicUpdate = (now - lastPeriodicSend >= 100);  // Send at least every 100ms
     
+    // Always send at least every 100ms, even if nothing changed (keep-alive)
     if (stateChanged || periodicUpdate) {
 #ifdef DEBUG_JOYSTICK
         // In debug mode, print all state changes and periodic updates
@@ -384,25 +385,26 @@ void loop() {
             lastDebugPrint = now;
         }
 #else
-        // Production mode: send via BLE if enabled, otherwise USB Serial
-#ifdef USE_BLE_JOYSTICK
-        if (deviceConnected && pJoystickChar) {
-            pJoystickChar->setValue((uint8_t*)&evt, sizeof(JoystickEvent));
-            pJoystickChar->notify();
+        // Production mode: send via USB Serial
+        // Always send via USB Serial (BLE disabled)
+        size_t written = Serial.write((uint8_t *)&evt, sizeof(JoystickEvent));
+        if (written != sizeof(JoystickEvent)) {
+            // Packet write failed - this shouldn't happen but log it
+            static uint32_t lastError = 0;
+            if (now - lastError > 1000) {  // Only log once per second
+                // Can't use Serial.println in production, but this helps debug
+                lastError = now;
+            }
         }
-#else
-        // USB Serial fallback
-        Serial.write((uint8_t *)&evt, sizeof(JoystickEvent));
         Serial.flush();  // Ensure data is sent immediately
 #endif
-#endif
         
+        // Update tracking variables
         if (stateChanged) {
             lastState = evt;
         }
-        if (periodicUpdate) {
-            lastPeriodicSend = now;
-        }
+        // Always update periodic send time when we send a packet
+        lastPeriodicSend = now;
     }
 #else
     delay(100);
