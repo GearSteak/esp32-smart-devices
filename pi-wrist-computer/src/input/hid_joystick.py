@@ -216,6 +216,7 @@ class HIDJoystick:
             elif event.code == ecodes.KEY_ESC:
                 # ESC key (Home button = Back/ESC)
                 with self._lock:
+                    # Only send on press, not release
                     if pressed and not self._home_pressed:
                         self._home_pressed = True
                         self._notify_key_esc()
@@ -241,7 +242,13 @@ class HIDJoystick:
     def _notify_key_esc(self):
         """Notify key callbacks with ESC key event."""
         from ..input.cardkb import KeyEvent, KeyCode
-        event = KeyEvent(code=KeyCode.ESC, char=None)
+        import time
+        event = KeyEvent(
+            code=KeyCode.ESC, 
+            char=None,
+            is_special=True,
+            timestamp=time.time()
+        )
         for cb in self._key_callbacks:
             try:
                 cb(event)

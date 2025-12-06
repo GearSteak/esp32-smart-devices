@@ -139,6 +139,13 @@ class PiWristComputer:
             ui_config
         )
         
+        # Add HID joystick to UI if enabled
+        if self.hid_joystick.enabled:
+            self.ui.hid_joystick = self.hid_joystick
+            self.hid_joystick.on_move(self.ui._on_cursor_move)
+            self.hid_joystick.on_click(self.ui._on_click)
+            self.hid_joystick.on_key(self.ui._on_key)
+        
         # Initialize services
         print("Initializing GPS...")
         self.gps = GPSService(self.config.get('gps', {}))

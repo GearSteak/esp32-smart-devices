@@ -356,6 +356,7 @@ class UI:
         self.cardkb = cardkb
         self.trackball = trackball
         self.usb_joystick = usb_joystick
+        self.hid_joystick = None  # Will be set by _setup_input if available
         self.config = config or {}
         
         # Screen dimensions (below status bar)
@@ -399,13 +400,15 @@ class UI:
         self.trackball.on_move(self._on_cursor_move)
         self.trackball.on_click(self._on_click)
         
-        # Add USB joystick support if available
+        # Add joystick support if available (USB, BLE, or HID)
         if self.usb_joystick and self.usb_joystick.enabled:
             self.usb_joystick.on_move(self._on_cursor_move)
             self.usb_joystick.on_click(self._on_click)
             # Add key callback for back button (ESC)
             if hasattr(self.usb_joystick, 'on_key'):
                 self.usb_joystick.on_key(self._on_key)
+        
+        # HID joystick will be set separately after UI creation
     
     def _on_key(self, event: KeyEvent):
         """Handle keyboard input."""
@@ -429,7 +432,7 @@ class UI:
             return
     
     def _on_cursor_move(self, x: int, y: int):
-        """Handle cursor movement from trackball or USB joystick."""
+        """Handle cursor movement from trackball or joystick."""
         # Get movement from trackball
         dx, dy = self.trackball.get_delta()
         
@@ -438,6 +441,12 @@ class UI:
             jx, jy = self.usb_joystick.get_delta()
             dx += jx
             dy += jy
+        
+        # Add movement from HID joystick if available
+        if hasattr(self, 'hid_joystick') and self.hid_joystick and self.hid_joystick.enabled:
+            hx, hy = self.hid_joystick.get_delta()
+            dx += hx
+            dy += hy
         
         # Update cursor position
         self.cursor_x = max(0, min(self.display.width - 1, self.cursor_x + dx))
