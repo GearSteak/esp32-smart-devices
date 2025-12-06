@@ -22,6 +22,7 @@ class GPIOManager:
     _lock = threading.Lock()
     _initialized = False
     _allocated_pins = set()
+    _error_printed = set()  # Track which pins have had errors printed
     
     def __new__(cls):
         if cls._instance is None:
@@ -36,12 +37,20 @@ class GPIOManager:
     def initialize(self):
         """Initialize GPIO once."""
         if not GPIO_AVAILABLE:
-            print("GPIO not available (not running on Pi?)")
+            if "gpio_not_available" not in self._error_printed:
+                print("GPIO not available (not running on Pi?)")
+                self._error_printed.add("gpio_not_available")
             return False
         
         with self._lock:
             if not self._initialized:
                 try:
+                    # Clean up any previous GPIO state
+                    try:
+                        GPIO.cleanup()
+                    except:
+                        pass
+                    
                     GPIO.setmode(GPIO.BCM)
                     GPIO.setwarnings(False)
                     self._initialized = True
@@ -51,10 +60,14 @@ class GPIOManager:
                     if "mode" in str(e).lower() and "already" in str(e).lower():
                         self._initialized = True
                         return True
-                    print(f"GPIO init failed: {e}")
+                    if "gpio_init_failed" not in self._error_printed:
+                        print(f"GPIO init failed: {e}")
+                        self._error_printed.add("gpio_init_failed")
                     return False
                 except Exception as e:
-                    print(f"GPIO init failed: {e}")
+                    if "gpio_init_failed" not in self._error_printed:
+                        print(f"GPIO init failed: {e}")
+                        self._error_printed.add("gpio_init_failed")
                     return False
             return True
     
@@ -71,6 +84,8 @@ class GPIOManager:
             try:
                 GPIO.setup(pin, GPIO.OUT)
                 self._allocated_pins.add(pin)
+                # Clear any previous error for this pin
+                self._error_printed.discard(f"pin_{pin}_error")
                 return True
             except RuntimeError as e:
                 error_str = str(e).lower()
@@ -78,26 +93,42 @@ class GPIOManager:
                 if "not allocated" in error_str or "not set" in error_str:
                     # Re-initialize and try again
                     try:
+                        self._initialized = False
+                        GPIO.cleanup()
                         GPIO.setmode(GPIO.BCM)
+                        GPIO.setwarnings(False)
+                        self._initialized = True
                         GPIO.setup(pin, GPIO.OUT)
                         self._allocated_pins.add(pin)
+                        self._error_printed.discard(f"pin_{pin}_error")
                         return True
                     except Exception as e2:
-                        print(f"GPIO setup output pin {pin} failed after re-init: {e2}")
+                        # Only print error once per pin
+                        if f"pin_{pin}_error" not in self._error_printed:
+                            print(f"GPIO setup output pin {pin} failed after re-init: {e2}")
+                            self._error_printed.add(f"pin_{pin}_error")
                         return False
                 # If pin is already set up, just add it to allocated list
                 elif "already" in error_str or "in use" in error_str:
                     self._allocated_pins.add(pin)
+                    self._error_printed.discard(f"pin_{pin}_error")
                     return True
-                print(f"GPIO setup output pin {pin} failed: {e}")
+                # Only print error once per pin
+                if f"pin_{pin}_error" not in self._error_printed:
+                    print(f"GPIO setup output pin {pin} failed: {e}")
+                    self._error_printed.add(f"pin_{pin}_error")
                 return False
             except Exception as e:
                 error_str = str(e).lower()
                 # If pin is already set up, just add it to allocated list
                 if "already" in error_str or "in use" in error_str:
                     self._allocated_pins.add(pin)
+                    self._error_printed.discard(f"pin_{pin}_error")
                     return True
-                print(f"GPIO setup output pin {pin} failed: {e}")
+                # Only print error once per pin
+                if f"pin_{pin}_error" not in self._error_printed:
+                    print(f"GPIO setup output pin {pin} failed: {e}")
+                    self._error_printed.add(f"pin_{pin}_error")
                 return False
     
     def setup_input(self, pin: int, pull_up: bool = True) -> bool:
@@ -145,16 +176,35 @@ class GPIOManager:
             # Handle "GPIO not allocated" by re-initializing
             if "not allocated" in error_str or "not set" in error_str:
                 try:
-                    GPIO.setmode(GPIO.BCM)
+                    # Force re-initialization
+                    with self._lock:
+                        self._initialized = False
+                        GPIO.cleanup()
+                        GPIO.setmode(GPIO.BCM)
+                        GPIO.setwarnings(False)
+                        self._initialized = True
+                    
                     GPIO.setup(pin, GPIO.OUT)
                     self._allocated_pins.add(pin)
                     GPIO.output(pin, GPIO.HIGH if value else GPIO.LOW)
+                    
+                    # Clear error flag for this pin if it worked
+                    self._error_printed.discard(f"pin_{pin}_error")
                 except Exception as e2:
-                    print(f"GPIO output pin {pin} failed after re-init: {e2}")
+                    # Only print error once per pin
+                    if f"pin_{pin}_error" not in self._error_printed:
+                        print(f"GPIO output pin {pin} failed after re-init: {e2}")
+                        self._error_printed.add(f"pin_{pin}_error")
             else:
-                print(f"GPIO output pin {pin} failed: {e}")
+                # Only print error once per pin
+                if f"pin_{pin}_error" not in self._error_printed:
+                    print(f"GPIO output pin {pin} failed: {e}")
+                    self._error_printed.add(f"pin_{pin}_error")
         except Exception as e:
-            print(f"GPIO output pin {pin} failed: {e}")
+            # Only print error once per pin
+            if f"pin_{pin}_error" not in self._error_printed:
+                print(f"GPIO output pin {pin} failed: {e}")
+                self._error_printed.add(f"pin_{pin}_error")
     
     def input(self, pin: int) -> bool:
         """Read input pin value."""

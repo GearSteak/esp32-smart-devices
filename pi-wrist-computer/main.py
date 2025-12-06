@@ -79,6 +79,16 @@ class PiWristComputer:
         # Load configuration
         self.config = self._load_config(config_path)
         
+        # Check GPIO availability first
+        from src.utils.gpio_manager import gpio
+        if not gpio.available:
+            print("WARNING: GPIO not available. Display may not work correctly.")
+            print("Make sure you're running on a Raspberry Pi with RPi.GPIO installed.")
+        else:
+            # Try to initialize GPIO early
+            if not gpio.initialize():
+                print("WARNING: GPIO initialization failed. Display may not work correctly.")
+        
         # Initialize hardware
         print("Initializing display...")
         self.display = Display(self.config.get('display', {}))
