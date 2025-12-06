@@ -88,14 +88,18 @@ class HIDJoystick:
                     has_mouse = ecodes.EV_REL in caps
                     has_keyboard = ecodes.EV_KEY in caps
                     
-                    if has_mouse and has_keyboard:
-                        # Check for mouse buttons (BTN_LEFT) and keyboard keys
+                    # Also accept devices with just mouse (for Arduino) or just keyboard+mouse (for USB keyboard/trackpad)
+                    # Accept devices with mouse OR keyboard (or both)
+                    # This will catch USB keyboard/trackpad (has both) or Arduino (has mouse)
+                    if has_mouse or has_keyboard:
                         key_caps = caps.get(ecodes.EV_KEY, [])
                         has_mouse_btn = ecodes.BTN_LEFT in key_caps or ecodes.BTN_MOUSE in key_caps
-                        has_keys = ecodes.KEY_A in key_caps or ecodes.KEY_ESC in key_caps
+                        has_keys = ecodes.KEY_A in key_caps or ecodes.KEY_ESC in key_caps or ecodes.KEY_ENTER in key_caps
                         
-                        if has_mouse_btn and has_keys:
-                            print(f"HID Joystick: Found keyboard+mouse device: {device.name} at {path}")
+                        # Prefer devices with both mouse and keyboard (USB keyboard/trackpad)
+                        if (has_mouse and has_keyboard) or has_mouse_btn or has_keys:
+                            print(f"HID Joystick: Found device: {device.name} at {path}")
+                            print(f"  - Has mouse: {has_mouse}, Has keyboard: {has_keyboard}")
                             return path
                 except Exception as e:
                     if "Permission denied" not in str(e):
@@ -164,19 +168,22 @@ class HIDJoystick:
             if not path:
                 return
             
-            # Open device and grab it exclusively (so terminal doesn't consume events)
+            # Open device
             self._device = InputDevice(path)
+            print(f"HID Joystick: Opened device: {self._device.name} at {path}")
+            
+            # Try to grab it exclusively (so terminal doesn't consume events)
             try:
-                self._device.grab()  # Grab device exclusively - prevents terminal from consuming events
-                print(f"HID Joystick: Device grabbed exclusively")
+                self._device.grab()
+                print(f"HID Joystick: Device grabbed exclusively - terminal won't receive events")
             except PermissionError:
-                print(f"HID Joystick: WARNING: Could not grab device - need root or input group membership")
+                print(f"HID Joystick: WARNING: Could not grab device - need root or input group")
                 print(f"HID Joystick: Run: sudo usermod -a -G input $USER (then log out/in)")
+                print(f"HID Joystick: Or run program with: sudo python3 main.py")
             except Exception as e:
                 print(f"HID Joystick: WARNING: Could not grab device: {e}")
+                print(f"HID Joystick: Events may still go to terminal")
             
-            print(f"HID Joystick: Connected to {path}")
-            print(f"HID Joystick: Device name: {self._device.name}")
             print(f"HID Joystick: Device capabilities: {list(self._device.capabilities().keys())}")
             self._connected = True
             

@@ -60,10 +60,10 @@ input:
     sensitivity: 2.0  # Movement multiplier (higher = faster)
     auto_reconnect: true  # Auto-reconnect on disconnect
   
-  # USB HID joystick (Arduino Pro Micro - no drivers needed!)
+  # USB HID joystick/keyboard/trackpad (Arduino Pro Micro or USB keyboard/trackpad)
   hid_joystick:
     enabled: true  # Enable USB HID joystick
-    device_path: /dev/input/event0  # Try event0, event1, event2, etc. if auto-detect fails
+    device_path: null  # null = auto-detect (will find USB keyboard/trackpad or Arduino)
     sensitivity: 2.0  # Movement multiplier (higher = faster)
     auto_reconnect: true  # Auto-reconnect on disconnect
 

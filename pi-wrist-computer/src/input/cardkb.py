@@ -88,10 +88,8 @@ class CardKB:
         """Initialize I2C bus."""
         try:
             self._bus = smbus2.SMBus(self.bus_num)
-            print(f"CardKB: Initialized I2C bus {self.bus_num}, address 0x{self.address:02X}")
         except Exception as e:
             print(f"CardKB: Failed to init I2C bus {self.bus_num}: {e}")
-            print(f"CardKB: Make sure I2C is enabled: sudo raspi-config")
             self.enabled = False
     
     def on_key(self, callback: Callable[[KeyEvent], None]):
@@ -116,12 +114,7 @@ class CardKB:
         
         try:
             key = self._bus.read_byte(self.address)
-        except Exception as e:
-            if not hasattr(self, '_read_error_count'):
-                self._read_error_count = 0
-            self._read_error_count += 1
-            if self._read_error_count <= 3:
-                print(f"CardKB: Read error: {e}")
+        except Exception:
             return None
         
         if key == 0:
@@ -155,13 +148,6 @@ class CardKB:
             is_special=is_special,
             timestamp=now
         )
-        
-        # Debug: print key presses
-        if not hasattr(self, '_key_press_count'):
-            self._key_press_count = 0
-        self._key_press_count += 1
-        if self._key_press_count <= 10:
-            print(f"CardKB: Key pressed: code=0x{key:02X} char='{char}' special={is_special}")
         
         # Notify callbacks
         for cb in self._callbacks:
