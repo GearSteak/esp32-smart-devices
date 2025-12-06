@@ -44,6 +44,7 @@ class USBJoystick:
         self._y = 0
         self._clicked = False
         self._click_count = 0
+        self._back_pressed = False
         
         # Thread safety
         self._lock = threading.Lock()
@@ -51,6 +52,7 @@ class USBJoystick:
         # Callbacks (compatible with Trackball interface)
         self._move_callbacks = []
         self._click_callbacks = []
+        self._key_callbacks = []  # For ESC/back button
         
         # Serial state
         self._connected = False
@@ -205,6 +207,12 @@ class USBJoystick:
         layer = data[3]
         seq = int.from_bytes(data[4:8], byteorder='little')
         
+        # Validate packet - skip if values are out of expected range
+        # This helps recover from misaligned reads (e.g., if text messages were in buffer)
+        if abs(x) > 100 or abs(y) > 100:
+            # Invalid packet - likely misaligned, skip it
+            return
+        
         with self._lock:
             # Convert joystick values to movement deltas
             # Joystick: -100 to +100, Trackball: pixels
@@ -216,8 +224,10 @@ class USBJoystick:
                 self._y += dy
                 self._notify_move()
             
-            # Handle button presses (bit0 = press, bit1 = double, bit2 = long)
-            if buttons & 0x01:  # Press
+            # Handle button presses
+            # Bit0 = Confirm/Select (left click)
+            # Bit4 = Back/Cancel (ESC key)
+            if buttons & 0x01:  # Confirm/Select button
                 if not self._clicked:
                     self._clicked = True
                     self._click_count += 1
@@ -226,6 +236,14 @@ class USBJoystick:
                 if self._clicked:
                     self._clicked = False
                     self._notify_click(False)
+            
+            # Handle back button (bit4) - send ESC key event
+            if buttons & 0x10:  # Back/Cancel button
+                if not hasattr(self, '_back_pressed') or not self._back_pressed:
+                    self._back_pressed = True
+                    self._notify_key_esc()
+            else:
+                self._back_pressed = False
     
     def _notify_move(self):
         """Notify move callbacks."""
@@ -243,6 +261,16 @@ class USBJoystick:
             except Exception as e:
                 print(f"USB joystick click callback error: {e}")
     
+    def _notify_key_esc(self):
+        """Notify key callbacks with ESC key event."""
+        from ..input.cardkb import KeyEvent, KeyCode
+        event = KeyEvent(code=KeyCode.ESC, char=None)
+        for cb in self._key_callbacks:
+            try:
+                cb(event)
+            except Exception as e:
+                print(f"USB joystick key callback error: {e}")
+    
     # Trackball-compatible interface
     def on_move(self, callback: Callable[[int, int], None]):
         """Register move callback. Called with (x, y) deltas."""
@@ -251,6 +279,10 @@ class USBJoystick:
     def on_click(self, callback: Callable[[bool], None]):
         """Register click callback. Called with pressed state."""
         self._click_callbacks.append(callback)
+    
+    def on_key(self, callback: Callable):
+        """Register key callback. Called with KeyEvent for ESC/back button."""
+        self._key_callbacks.append(callback)
     
     def get_delta(self) -> tuple[int, int]:
         """Get and reset accumulated movement."""

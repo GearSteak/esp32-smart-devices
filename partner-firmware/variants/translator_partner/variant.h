@@ -59,7 +59,7 @@
 
 // Calibration values (12-bit ADC, 0-4095)
 #define JOYSTICK_CENTER         2048
-#define JOYSTICK_DEADZONE       164     // ~8% of center value
+#define JOYSTICK_DEADZONE       50      // Reduced deadzone for better sensitivity (~2.4% of center)
 #define JOYSTICK_SAMPLE_RATE_HZ 100
 
 // Axis inversion (adjust based on physical orientation)

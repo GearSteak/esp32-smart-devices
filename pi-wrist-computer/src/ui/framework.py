@@ -403,6 +403,9 @@ class UI:
         if self.usb_joystick and self.usb_joystick.enabled:
             self.usb_joystick.on_move(self._on_cursor_move)
             self.usb_joystick.on_click(self._on_click)
+            # Add key callback for back button (ESC)
+            if hasattr(self.usb_joystick, 'on_key'):
+                self.usb_joystick.on_key(self._on_key)
     
     def _on_key(self, event: KeyEvent):
         """Handle keyboard input."""
